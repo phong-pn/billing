@@ -1,5 +1,6 @@
 package com.proxglobal.proxlibiap
 
+import android.app.Activity
 import android.content.Context
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -109,6 +110,9 @@ class BillingManager private constructor(): DefaultLifecycleObserver, PurchasesU
                             if (productDetail.productType == BillingClient.ProductType.SUBS) {
                                 productDetail.subscriptionOfferDetails?.forEach {
                                     "offer detail".logd()
+                                    it.pricingPhases.pricingPhaseList.forEach {
+                                        it.recurrenceMode
+                                    }
                                     it.offerTags.forEach { it.logd() }
 
                                     subscriptionOfferDetailMap[it.offerToken] = it
@@ -221,10 +225,12 @@ class BillingManager private constructor(): DefaultLifecycleObserver, PurchasesU
                     }
                 }
                 BillingClient.BillingResponseCode.USER_CANCELED -> {
+                    logd("onPurchaseUpdate: User canceled billing")
 //                    Log.i(TAG, "onPurchasesUpdated: User canceled the purchase")
                 }
                 BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED -> {
 //                    Log.i(TAG, "onPurchasesUpdated: The user already owns this item")
+                    logd("onPurchasesUpdated: The user already owns this item")
                 }
                 BillingClient.BillingResponseCode.DEVELOPER_ERROR -> {
 //                    Log.e(
@@ -237,6 +243,22 @@ class BillingManager private constructor(): DefaultLifecycleObserver, PurchasesU
                 }
             }
         }
+    }
+
+    fun subscribe(activity: Activity, productDetails: ProductDetails) {
+
+    }
+
+    private fun launchBillingFlow(activity: Activity, productDetails: ProductDetails, token: String) {
+        val billingParams = BillingFlowParams.newBuilder().setProductDetailsParamsList(
+            listOf(
+                BillingFlowParams.ProductDetailsParams.newBuilder()
+                    .setProductDetails(productDetails)
+                    .setOfferToken(token)
+                    .build()
+            )
+        ).build()
+        billingClient.launchBillingFlow(activity, billingParams)
     }
 }
 
