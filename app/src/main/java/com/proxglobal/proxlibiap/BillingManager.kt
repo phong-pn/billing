@@ -2,33 +2,58 @@ package com.proxglobal.proxlibiap
 
 import android.app.Activity
 import android.content.Context
-import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import com.android.billingclient.api.*
 import com.android.billingclient.api.ProductDetails.OneTimePurchaseOfferDetails
 import com.android.billingclient.api.ProductDetails.SubscriptionOfferDetails
 import com.android.billingclient.api.Purchase.PurchaseState
+import com.proxglobal.proxlibiap.model.BasePlanSubscription
+import com.proxglobal.proxlibiap.model.OfferSubscription
+import com.proxglobal.proxlibiap.model.OnetimeProduct
+import com.proxglobal.proxlibiap.model.Subscription
+import com.proxglobal.proxlibiap.util.findBasePlan
+import com.proxglobal.proxlibiap.util.findOffers
 import com.proxglobal.proxlibiap.util.logd
 import com.proxglobal.proxlibiap.util.loge
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class BillingManager private constructor(): DefaultLifecycleObserver, PurchasesUpdatedListener,
+class BillingManager private constructor() : DefaultLifecycleObserver, PurchasesUpdatedListener,
     BillingClientStateListener {
     companion object {
         val instance by lazy { BillingManager() }
     }
+
     private lateinit var billingClient: BillingClient
 
     private val listSubscriptionId = arrayListOf<String>("lib_iap_premium")
     private val listProductId = arrayListOf<String>()
+    private val listConsumableId = arrayListOf<String>()
 
     private val productDetailMap = hashMapOf<String, ProductDetails>()
     private val subscriptionOfferDetailMap = hashMapOf<String, SubscriptionOfferDetails>()
     private val oneTimePurchaseOfferDetailMap = hashMapOf<String, OneTimePurchaseOfferDetails>()
 
     private val scope = CoroutineScope(Dispatchers.Default)
+
+    private val ownedProducts = arrayListOf<String>()
+    private val listOwnedProductListener = arrayListOf<OwnedProductListener>()
+
+    private fun onOwned(productId: String) {
+        ownedProducts.add(productId)
+        listOwnedProductListener.forEach {
+            it.onOwned(productId)
+        }
+    }
+
+    fun addOwnedProductListener(listener: OwnedProductListener) {
+        listOwnedProductListener.add(listener)
+        ownedProducts.forEach {
+            listener.onOwned(it)
+        }
+    }
+
 
     fun init(context: Context) {
         billingClient = BillingClient.newBuilder(context)
@@ -108,13 +133,9 @@ class BillingManager private constructor(): DefaultLifecycleObserver, PurchasesU
                             productDetailMap[productDetail.productId] = productDetail
                             //store all offers and base plans of this subscription
                             if (productDetail.productType == BillingClient.ProductType.SUBS) {
+//                                val basePlanAndOffers = productDetail.subscriptionOfferDetails?.sortBy { it.offerTags.size }
+//                                val basePlan =
                                 productDetail.subscriptionOfferDetails?.forEach {
-                                    "offer detail".logd()
-                                    it.pricingPhases.pricingPhaseList.forEach {
-                                        it.recurrenceMode
-                                    }
-                                    it.offerTags.forEach { it.logd() }
-
                                     subscriptionOfferDetailMap[it.offerToken] = it
                                 }
                             }
@@ -180,28 +201,62 @@ class BillingManager private constructor(): DefaultLifecycleObserver, PurchasesU
 
     }
 
-    private suspend fun processPurchase(purchases: List<Purchase>?) {
+    private fun processPurchase(purchases: List<Purchase>?) {
         if (!purchases.isNullOrEmpty()) {
             for (purchase in purchases) {
                 if (purchase.purchaseState == PurchaseState.PURCHASED || purchase.purchaseState == PurchaseState.PENDING) {
                     //Grant entitlement to the user.
-                    purchase.products.forEach {
-                        val detail = productDetailMap[it]
+                    purchase.products.forEach { productId ->
+                        val detail = productDetailMap[productId]
                         when (detail?.productType) {
+                            BillingClient.ProductType.INAPP -> {
+                                //consume purchase
+                                if (listConsumableId.contains(productId)) consumePurchase(productId, purchase.purchaseToken)
+                                else onOwned(productId)
+                            }
                             BillingClient.ProductType.SUBS -> {
-
+                                onOwned(productId)
                             }
                         }
                         // If the state is PURCHASED, acknowledge the purchase if it hasn't been acknowledged yet.
-                        if (!purchase.isAcknowledged && purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
-                            val acknowledgePurchaseParams = AcknowledgePurchaseParams.newBuilder()
-                                .setPurchaseToken(purchase.purchaseToken).build()
-                            billingClient.acknowledgePurchase(acknowledgePurchaseParams)
+                        if (!purchase.isAcknowledged && purchase.purchaseState == PurchaseState.PURCHASED) {
+                            acknowledgePurchase(purchase.purchaseToken)
                         }
                     }
                 }
             }
         }
+    }
+
+    private fun consumePurchase(productId: String, purchaseToken: String) {
+        val consumeParams =
+            ConsumeParams.newBuilder()
+                .setPurchaseToken(purchaseToken)
+                .build()
+        scope.launch(Dispatchers.IO) {
+            val result = billingClient.consumePurchase(consumeParams)
+            val response = BillingResponse(result.billingResult.responseCode)
+            if (response.isOk) {
+                onOwned(productId)
+            } else {
+                loge("Consume purchase failure with code: ${result.billingResult.responseCode}")
+            }
+
+        }
+    }
+
+    private fun acknowledgePurchase(purchaseToken: String) {
+        scope.launch {
+            val acknowledgePurchaseParams = AcknowledgePurchaseParams.newBuilder()
+                .setPurchaseToken(purchaseToken).build()
+            val result = billingClient.acknowledgePurchase(acknowledgePurchaseParams)
+            val response = BillingResponse(result.responseCode)
+            if (response.isOk) {
+            } else {
+                loge("Consume purchase failure with code: ${result.responseCode}")
+            }
+        }
+
     }
 
     fun end() {
@@ -233,6 +288,7 @@ class BillingManager private constructor(): DefaultLifecycleObserver, PurchasesU
                     logd("onPurchasesUpdated: The user already owns this item")
                 }
                 BillingClient.BillingResponseCode.DEVELOPER_ERROR -> {
+                    logd("developer error")
 //                    Log.e(
 //                        TAG, "onPurchasesUpdated: Developer error means that Google Play " +
 //                                "does not recognize the configuration. If you are just getting started, " +
@@ -245,21 +301,61 @@ class BillingManager private constructor(): DefaultLifecycleObserver, PurchasesU
         }
     }
 
-    fun subscribe(activity: Activity, productDetails: ProductDetails) {
-
+    fun subscribe(activity: Activity, subscription: Subscription) {
+        val productDetails = productDetailMap[subscription.productId]
+        productDetails?.let {
+            launchBillingFlow(activity, productDetails, subscription.token)
+        } ?: "Can not get product Details. Please check productId of subs: $subscription".loge()
     }
 
-    private fun launchBillingFlow(activity: Activity, productDetails: ProductDetails, token: String) {
+    fun purchase(activity: Activity, onetimeProduct: OnetimeProduct) {
+        val productDetails = productDetailMap[onetimeProduct.productId]
+        productDetails?.let {
+            launchBillingFlow(activity, productDetails)
+        }
+            ?: "Can not get product Details. Please check productId of oneTimeProduct: $onetimeProduct".loge()
+    }
+
+    private fun launchBillingFlow(
+        activity: Activity,
+        productDetails: ProductDetails,
+        token: String? = null
+    ) {
+        val params = BillingFlowParams.ProductDetailsParams.newBuilder()
+            .setProductDetails(productDetails)
+        token?.let { params.setOfferToken(it) }
         val billingParams = BillingFlowParams.newBuilder().setProductDetailsParamsList(
-            listOf(
-                BillingFlowParams.ProductDetailsParams.newBuilder()
-                    .setProductDetails(productDetails)
-                    .setOfferToken(token)
-                    .build()
-            )
+            listOf(params.build())
         ).build()
         billingClient.launchBillingFlow(activity, billingParams)
     }
+
+    fun getBasePlan(subscriptionId: String, tags: List<String>): BasePlanSubscription? {
+        val productDetails = productDetailMap[subscriptionId]
+        return productDetails?.findBasePlan(tags)
+    }
+
+    fun getOfferSubscription(subscriptionId: String, basePlanTags: List<String>, offerTags: List<String>): List<OfferSubscription> {
+        val productDetails = productDetailMap[subscriptionId]
+        return when (val basePlan =  productDetails?.findBasePlan(basePlanTags)) {
+            null -> listOf()
+            else -> productDetails.findOffers(basePlan, offerTags)
+        }
+    }
+
+    fun getOfferSubscription(basePlan: BasePlanSubscription, offerTags: List<String>): List<OfferSubscription>{
+        val productDetails = productDetailMap[basePlan.productId]
+        return productDetails?.findOffers(basePlan, offerTags) ?: listOf()
+    }
+
+    fun getOneTimeProduct(productId: String): OnetimeProduct? {
+        val productDetails = productDetailMap[productId]
+        return productDetails?.oneTimePurchaseOfferDetails?.let {
+            OnetimeProduct(productId, it.formattedPrice, it.priceCurrencyCode)
+        }
+    }
+
+
 }
 
 @JvmInline
