@@ -3,9 +3,9 @@ package com.proxglobal.proxlibiap
 import android.app.Activity
 import android.content.Context
 import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import com.android.billingclient.api.*
-import com.android.billingclient.api.ProductDetails.OneTimePurchaseOfferDetails
-import com.android.billingclient.api.ProductDetails.SubscriptionOfferDetails
 import com.android.billingclient.api.Purchase.PurchaseState
 import com.proxglobal.proxlibiap.model.BasePlanSubscription
 import com.proxglobal.proxlibiap.model.OfferSubscription
@@ -19,30 +19,38 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class BillingManager private constructor() : DefaultLifecycleObserver, PurchasesUpdatedListener,
+class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUpdatedListener,
     BillingClientStateListener {
     companion object {
-        val instance by lazy { BillingManager() }
+        val instance by lazy { ProxPurchase() }
     }
 
     private lateinit var billingClient: BillingClient
 
     private val listSubscriptionId = arrayListOf<String>("lib_iap_premium")
-    private val listProductId = arrayListOf<String>()
+    private val listOneTimeProductId = arrayListOf<String>()
     private val listConsumableId = arrayListOf<String>()
 
     private val productDetailMap = hashMapOf<String, ProductDetails>()
-    private val subscriptionOfferDetailMap = hashMapOf<String, SubscriptionOfferDetails>()
-    private val oneTimePurchaseOfferDetailMap = hashMapOf<String, OneTimePurchaseOfferDetails>()
 
     private val scope = CoroutineScope(Dispatchers.Default)
 
-    private val ownedProducts = arrayListOf<String>()
+    private val ownedProducts = mutableSetOf<String>()
     private val listOwnedProductListener = arrayListOf<OwnedProductListener>()
 
+    private var syncPurchased = false
+    init {
+        ProcessLifecycleOwner.get().lifecycle.addObserver(this)
+    }
+
+    override fun onResume(owner: LifecycleOwner) {
+        super.onResume(owner)
+        queryPurchases()
+    }
     private fun onOwned(productId: String) {
-        ownedProducts.add(productId)
-        listOwnedProductListener.forEach {
+        // Try to add productId to ownedProducts. If success, listOwnedProductListener will be invoke
+        val addSuccess = ownedProducts.add(productId)
+        if (addSuccess) listOwnedProductListener.forEach {
             it.onOwned(productId)
         }
     }
@@ -62,6 +70,16 @@ class BillingManager private constructor() : DefaultLifecycleObserver, Purchases
             .build()
         logd("billing client initializing...")
         if (!billingClient.isReady) startConnection()
+    }
+
+    fun addOneTimeProductId(listId: List<String>) {
+        listOneTimeProductId.addAll(listId)
+        queryProductDetails()
+    }
+
+    fun addSubscriptionId(listId: List<String>) {
+        listSubscriptionId.addAll(listId)
+        queryProductDetails()
     }
 
     fun startConnection() {
@@ -108,7 +126,7 @@ class BillingManager private constructor() : DefaultLifecycleObserver, Purchases
 
         val productDetailParams = QueryProductDetailsParams.newBuilder()
         val productList = arrayListOf<QueryProductDetailsParams.Product>()
-        listProductId.forEach { id ->
+        listOneTimeProductId.forEach { id ->
             productList.add(
                 QueryProductDetailsParams.Product.newBuilder()
                     .setProductId(id)
@@ -123,7 +141,7 @@ class BillingManager private constructor() : DefaultLifecycleObserver, Purchases
             if (subscriptionList.isNotEmpty()) {
                 subDetailParams.setProductList(subscriptionList).let { params ->
                     val result = billingClient.queryProductDetails(params.build())
-                    this@BillingManager.logd("Query subscription detail response ${result.billingResult.responseCode}")
+                    this@ProxPurchase.logd("Query subscription detail response ${result.billingResult.responseCode}")
                     val response = BillingResponse(result.billingResult.responseCode)
                     if (response.isOk) {
                         result.productDetailsList?.size?.logd()
@@ -131,14 +149,6 @@ class BillingManager private constructor() : DefaultLifecycleObserver, Purchases
                             //store detail
                             productDetail.logd()
                             productDetailMap[productDetail.productId] = productDetail
-                            //store all offers and base plans of this subscription
-                            if (productDetail.productType == BillingClient.ProductType.SUBS) {
-//                                val basePlanAndOffers = productDetail.subscriptionOfferDetails?.sortBy { it.offerTags.size }
-//                                val basePlan =
-                                productDetail.subscriptionOfferDetails?.forEach {
-                                    subscriptionOfferDetailMap[it.offerToken] = it
-                                }
-                            }
                         }
                     }
                 }
@@ -149,19 +159,13 @@ class BillingManager private constructor() : DefaultLifecycleObserver, Purchases
                 productDetailParams.setProductList(productList).let { params ->
                     billingClient.queryProductDetails(params.build())
                     val result = billingClient.queryProductDetails(params.build())
-                    this@BillingManager.logd("Query product detail response ${result.billingResult.responseCode}")
+                    this@ProxPurchase.logd("Query product detail response ${result.billingResult.responseCode}")
                     val response = BillingResponse(result.billingResult.responseCode)
                     if (response.isOk) {
                         result.productDetailsList?.forEach { productDetail ->
                             productDetail.logd()
                             // store detail
                             productDetailMap[productDetail.productId] = productDetail
-                            //store onetimeProductDetail
-                            if (productDetail.productType == BillingClient.ProductType.INAPP) {
-                                productDetail.oneTimePurchaseOfferDetails?.let {
-                                    oneTimePurchaseOfferDetailMap[productDetail.productId] = it
-                                }
-                            }
                         }
                     }
                 }
@@ -197,6 +201,7 @@ class BillingManager private constructor() : DefaultLifecycleObserver, Purchases
             if (BillingResponse(productPurchaseResult.billingResult.responseCode).isOk) {
                 processPurchase(productPurchaseResult.purchasesList)
             }
+            syncPurchased = true
         }
 
     }
@@ -355,7 +360,13 @@ class BillingManager private constructor() : DefaultLifecycleObserver, Purchases
         }
     }
 
-
+    fun checkPurchased(): Boolean {
+        if (!syncPurchased) {
+            queryPurchases()
+            return ownedProducts.size > 0
+        }
+        else return ownedProducts.size > 0
+    }
 }
 
 @JvmInline

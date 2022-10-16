@@ -9,7 +9,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        val billing = BillingManager.instance
+        val billing = ProxPurchase.instance
         billing.addOwnedProductListener(object : OwnedProductListener {
             override fun onOwned(productId: String) {
                 logd("Product with id: $productId owned")
@@ -18,10 +18,10 @@ class MainActivity : AppCompatActivity() {
         })
         bt_offer_year.postDelayed({
 
-            val baseMonth = BillingManager.instance.getBasePlan("lib_iap_premium", listOf("monthly-premium"))
-            val offersMonth = BillingManager.instance.getOfferSubscription(baseMonth!!, listOf("offer-monthly"))
-            val baseYear = BillingManager.instance.getBasePlan("lib_iap_premium", listOf("yearly-premium"))
-            val offerYear = BillingManager.instance.getOfferSubscription(baseYear!!, listOf("offer-yearly"))
+            val baseMonth = ProxPurchase.instance.getBasePlan("lib_iap_premium", listOf("monthly-premium"))
+            val offersMonth = ProxPurchase.instance.getOfferSubscription(baseMonth!!, listOf("offer-monthly"))
+            val baseYear = ProxPurchase.instance.getBasePlan("lib_iap_premium", listOf("yearly-premium"))
+            val offerYear = ProxPurchase.instance.getOfferSubscription(baseYear!!, listOf("offer-yearly"))
             bt_base_month.setOnClickListener {
                 billing.subscribe(this, baseMonth)
             }
