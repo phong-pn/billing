@@ -23,8 +23,8 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        billing.checkPurchased().logd()
         bt_offer_year.postDelayed({
+            billing.checkPurchased().logd()
 
             val baseMonth = ProxPurchase.instance.getBasePlan("lib_iap_premium", listOf("monthly-premium"))
             val offersMonth = baseMonth?.let { ProxPurchase.instance.getOfferSubscription(it, listOf("offer-monthly")) }
