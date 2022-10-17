@@ -2,9 +2,6 @@ package com.proxglobal.proxlibiap
 
 import android.app.Activity
 import android.content.Context
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.ProcessLifecycleOwner
 import com.android.billingclient.api.*
 import com.android.billingclient.api.Purchase.PurchaseState
 import com.proxglobal.proxlibiap.model.BasePlanSubscription
@@ -15,11 +12,9 @@ import com.proxglobal.proxlibiap.util.findBasePlan
 import com.proxglobal.proxlibiap.util.findOffers
 import com.proxglobal.proxlibiap.util.logd
 import com.proxglobal.proxlibiap.util.loge
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 
-class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUpdatedListener,
+class ProxPurchase private constructor() : PurchasesUpdatedListener,
     BillingClientStateListener {
     companion object {
         val instance by lazy { ProxPurchase() }
@@ -27,7 +22,7 @@ class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUp
 
     private lateinit var billingClient: BillingClient
 
-    private val listSubscriptionId = arrayListOf<String>("lib_iap_premium")
+    private val listSubscriptionId = arrayListOf<String>()
     private val listOneTimeProductId = arrayListOf<String>()
     private val listConsumableId = arrayListOf<String>()
 
@@ -41,21 +36,13 @@ class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUp
 
     private var syncPurchased = false
 
-    init {
-        ProcessLifecycleOwner.get().lifecycle.addObserver(this)
-    }
-
-    override fun onResume(owner: LifecycleOwner) {
-        super.onResume(owner)
-        queryPurchases()
-    }
-
-    private fun onOwned(productId: String, transactionDetails: String) {
+    private fun onOwned(productId: String) {
         // Try to add productId to ownedProducts. If success, listOwnedProductListener will be invoke
         val addSuccess = ownedProducts.add(productId)
         if (addSuccess) {
+            logd("productId was add $productId")
             listPurchaseUpdateListener.forEach {
-                it.onProductPurchased(productId, transactionDetails)
+                it.onProductPurchased(productId)
             }
         }
     }
@@ -64,12 +51,18 @@ class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUp
         listPurchaseUpdateListener.add(listener)
     }
 
-    fun init(context: Context) {
+    fun init(
+        context: Context,
+        listOneTimeProductId: List<String> = listOf(),
+        listSubscriptionId: List<String> = listOf(),
+    ) {
         billingClient = BillingClient.newBuilder(context)
             .setListener(this)
             .enablePendingPurchases()
             .build()
         logd("billing client initializing...")
+        this.listSubscriptionId.addAll(listSubscriptionId)
+        this.listOneTimeProductId.addAll(listOneTimeProductId)
         if (!billingClient.isReady) startConnection()
     }
 
@@ -99,7 +92,9 @@ class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUp
             // The billing client is ready.
             // You can query product details and purchases here.
             queryProductDetails()
-            queryPurchases()
+            runBlocking {
+                queryPurchases()
+            }
         }
     }
 
@@ -142,7 +137,7 @@ class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUp
             if (subscriptionList.isNotEmpty()) {
                 subDetailParams.setProductList(subscriptionList).let { params ->
                     val result = billingClient.queryProductDetails(params.build())
-                    this@ProxPurchase.logd("Query subscription detail response ${result.billingResult.responseCode}")
+                    this@ProxPurchase.logd("Query subscription detail response ${result.billingResult.responseCode} ${result.billingResult.debugMessage}")
                     val response = BillingResponse(result.billingResult.responseCode)
                     if (response.isOk) {
                         result.productDetailsList?.size?.logd()
@@ -181,11 +176,11 @@ class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUp
      * You still need to check the Google Play Billing API to know when purchase tokens are removed.
      */
     fun queryPurchases() {
-        if (!billingClient.isReady) {
-            loge("queryPurchases: BillingClient is not ready")
-            billingClient.startConnection(this)
-        }
-        scope.launch {
+        runBlocking {
+            if (!billingClient.isReady) {
+                loge("queryPurchases: BillingClient is not ready")
+                billingClient.startConnection(this@ProxPurchase)
+            }
             val subPurchaseResult = billingClient.queryPurchasesAsync(
                 QueryPurchasesParams.newBuilder()
                     .setProductType(BillingClient.ProductType.SUBS)
@@ -204,11 +199,11 @@ class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUp
             }
             syncPurchased = true
         }
-
     }
 
-    private fun processPurchase(purchases: List<Purchase>?) {
+    private suspend fun processPurchase(purchases: List<Purchase>?) {
         if (!purchases.isNullOrEmpty()) {
+            logd("Process purchase...")
             for (purchase in purchases) {
                 if (purchase.purchaseState == PurchaseState.PURCHASED || purchase.purchaseState == PurchaseState.PENDING) {
                     //Grant entitlement to the user.
@@ -219,13 +214,12 @@ class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUp
                                 //consume purchase
                                 if (listConsumableId.contains(productId)) consumePurchase(
                                     productId,
-                                    purchase.purchaseToken,
-                                    purchase.originalJson
+                                    purchase.purchaseToken
                                 )
-                                else onOwned(productId, purchase.originalJson)
+                                else onOwned(productId)
                             }
                             BillingClient.ProductType.SUBS -> {
-                                onOwned(productId, purchase.originalJson)
+                                onOwned(productId)
                             }
                         }
                         // If the state is PURCHASED, acknowledge the purchase if it hasn't been acknowledged yet.
@@ -238,37 +232,33 @@ class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUp
         }
     }
 
-    private fun consumePurchase(
+    private suspend fun consumePurchase(
         productId: String,
-        purchaseToken: String,
-        transactionDetails: String
+        purchaseToken: String
     ) {
         val consumeParams =
             ConsumeParams.newBuilder()
                 .setPurchaseToken(purchaseToken)
                 .build()
-        scope.launch(Dispatchers.IO) {
-            val result = billingClient.consumePurchase(consumeParams)
-            val response = BillingResponse(result.billingResult.responseCode)
-            if (response.isOk) {
-                onOwned(productId, transactionDetails)
-            } else {
-                loge("Consume purchase failure with code: ${result.billingResult.responseCode}")
-            }
-
+        val result = billingClient.consumePurchase(consumeParams)
+        val response = BillingResponse(result.billingResult.responseCode)
+        if (response.isOk) {
+            onOwned(productId)
+        } else {
+            loge("Consume purchase failure with code: ${result.billingResult.responseCode}")
         }
+
+
     }
 
-    private fun acknowledgePurchase(purchaseToken: String) {
-        scope.launch {
-            val acknowledgePurchaseParams = AcknowledgePurchaseParams.newBuilder()
-                .setPurchaseToken(purchaseToken).build()
-            val result = billingClient.acknowledgePurchase(acknowledgePurchaseParams)
-            val response = BillingResponse(result.responseCode)
-            if (response.isOk) {
-            } else {
-                loge("Consume purchase failure with code: ${result.responseCode}")
-            }
+    private suspend fun acknowledgePurchase(purchaseToken: String) {
+        val acknowledgePurchaseParams = AcknowledgePurchaseParams.newBuilder()
+            .setPurchaseToken(purchaseToken).build()
+        val result = billingClient.acknowledgePurchase(acknowledgePurchaseParams)
+        val response = BillingResponse(result.responseCode)
+        if (response.isOk) {
+        } else {
+            loge("Consume purchase failure with code: ${result.responseCode}")
         }
 
     }
@@ -361,7 +351,7 @@ class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUp
         val billingParams = BillingFlowParams.newBuilder().setProductDetailsParamsList(
             listOf(params.build())
         ).build()
-        billingClient.launchBillingFlow(activity, billingParams)
+        val result = billingClient.launchBillingFlow(activity, billingParams)
     }
 
     fun getBasePlan(subscriptionId: String, tags: List<String>): BasePlanSubscription? {
@@ -399,8 +389,8 @@ class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUp
     fun checkPurchased(): Boolean {
         if (!syncPurchased) {
             queryPurchases()
-            return ownedProducts.size > 0
-        } else return ownedProducts.size > 0
+        }
+        return ownedProducts.size > 0
     }
 }
 
