@@ -36,9 +36,11 @@ class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUp
     private val scope = CoroutineScope(Dispatchers.Default)
 
     private val ownedProducts = mutableSetOf<String>()
-    private val listOwnedProductListener = arrayListOf<OwnedProductListener>()
+
+    private var listPurchaseUpdateListener = arrayListOf<PurchaseUpdateListener>()
 
     private var syncPurchased = false
+
     init {
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
     }
@@ -47,21 +49,20 @@ class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUp
         super.onResume(owner)
         queryPurchases()
     }
-    private fun onOwned(productId: String) {
+
+    private fun onOwned(productId: String, transactionDetails: String) {
         // Try to add productId to ownedProducts. If success, listOwnedProductListener will be invoke
         val addSuccess = ownedProducts.add(productId)
-        if (addSuccess) listOwnedProductListener.forEach {
-            it.onOwned(productId)
+        if (addSuccess) {
+            listPurchaseUpdateListener.forEach {
+                it.onProductPurchased(productId, transactionDetails)
+            }
         }
     }
 
-    fun addOwnedProductListener(listener: OwnedProductListener) {
-        listOwnedProductListener.add(listener)
-        ownedProducts.forEach {
-            listener.onOwned(it)
-        }
+    fun addPurchaseUpdateListener(listener: PurchaseUpdateListener) {
+        listPurchaseUpdateListener.add(listener)
     }
-
 
     fun init(context: Context) {
         billingClient = BillingClient.newBuilder(context)
@@ -216,11 +217,15 @@ class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUp
                         when (detail?.productType) {
                             BillingClient.ProductType.INAPP -> {
                                 //consume purchase
-                                if (listConsumableId.contains(productId)) consumePurchase(productId, purchase.purchaseToken)
-                                else onOwned(productId)
+                                if (listConsumableId.contains(productId)) consumePurchase(
+                                    productId,
+                                    purchase.purchaseToken,
+                                    purchase.originalJson
+                                )
+                                else onOwned(productId, purchase.originalJson)
                             }
                             BillingClient.ProductType.SUBS -> {
-                                onOwned(productId)
+                                onOwned(productId, purchase.originalJson)
                             }
                         }
                         // If the state is PURCHASED, acknowledge the purchase if it hasn't been acknowledged yet.
@@ -233,7 +238,11 @@ class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUp
         }
     }
 
-    private fun consumePurchase(productId: String, purchaseToken: String) {
+    private fun consumePurchase(
+        productId: String,
+        purchaseToken: String,
+        transactionDetails: String
+    ) {
         val consumeParams =
             ConsumeParams.newBuilder()
                 .setPurchaseToken(purchaseToken)
@@ -242,7 +251,7 @@ class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUp
             val result = billingClient.consumePurchase(consumeParams)
             val response = BillingResponse(result.billingResult.responseCode)
             if (response.isOk) {
-                onOwned(productId)
+                onOwned(productId, transactionDetails)
             } else {
                 loge("Consume purchase failure with code: ${result.billingResult.responseCode}")
             }
@@ -286,14 +295,29 @@ class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUp
                 }
                 BillingClient.BillingResponseCode.USER_CANCELED -> {
                     logd("onPurchaseUpdate: User canceled billing")
+                    listPurchaseUpdateListener.forEach {
+                        it.onUserCancelBilling()
+                    }
 //                    Log.i(TAG, "onPurchasesUpdated: User canceled the purchase")
                 }
                 BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED -> {
 //                    Log.i(TAG, "onPurchasesUpdated: The user already owns this item")
                     logd("onPurchasesUpdated: The user already owns this item")
+                    listPurchaseUpdateListener.forEach {
+                        it.onPurchaseFailure(responseCode, "The user already owns this item")
+                    }
                 }
                 BillingClient.BillingResponseCode.DEVELOPER_ERROR -> {
                     logd("developer error")
+                    listPurchaseUpdateListener.forEach {
+                        it.onPurchaseFailure(
+                            responseCode, "Developer error means that Google Play " +
+                                    "does not recognize the configuration. If you are just getting started, " +
+                                    "make sure you have configured the application correctly in the " +
+                                    "Google Play Console. The product ID must match and the APK you " +
+                                    "are using must be signed with release keys."
+                        )
+                    }
 //                    Log.e(
 //                        TAG, "onPurchasesUpdated: Developer error means that Google Play " +
 //                                "does not recognize the configuration. If you are just getting started, " +
@@ -301,6 +325,11 @@ class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUp
 //                                "Google Play Console. The product ID must match and the APK you " +
 //                                "are using must be signed with release keys."
 //                    )
+                }
+                else -> {
+                    listPurchaseUpdateListener.forEach {
+                        it.onPurchaseFailure(responseCode, "An error occur")
+                    }
                 }
             }
         }
@@ -340,15 +369,22 @@ class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUp
         return productDetails?.findBasePlan(tags)
     }
 
-    fun getOfferSubscription(subscriptionId: String, basePlanTags: List<String>, offerTags: List<String>): List<OfferSubscription> {
+    fun getOfferSubscription(
+        subscriptionId: String,
+        basePlanTags: List<String>,
+        offerTags: List<String>
+    ): List<OfferSubscription> {
         val productDetails = productDetailMap[subscriptionId]
-        return when (val basePlan =  productDetails?.findBasePlan(basePlanTags)) {
+        return when (val basePlan = productDetails?.findBasePlan(basePlanTags)) {
             null -> listOf()
             else -> productDetails.findOffers(basePlan, offerTags)
         }
     }
 
-    fun getOfferSubscription(basePlan: BasePlanSubscription, offerTags: List<String>): List<OfferSubscription>{
+    fun getOfferSubscription(
+        basePlan: BasePlanSubscription,
+        offerTags: List<String>
+    ): List<OfferSubscription> {
         val productDetails = productDetailMap[basePlan.productId]
         return productDetails?.findOffers(basePlan, offerTags) ?: listOf()
     }
@@ -364,8 +400,7 @@ class ProxPurchase private constructor() : DefaultLifecycleObserver, PurchasesUp
         if (!syncPurchased) {
             queryPurchases()
             return ownedProducts.size > 0
-        }
-        else return ownedProducts.size > 0
+        } else return ownedProducts.size > 0
     }
 }
 

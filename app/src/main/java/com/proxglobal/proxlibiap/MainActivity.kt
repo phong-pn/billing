@@ -10,11 +10,10 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         val billing = ProxPurchase.instance
-        billing.addOwnedProductListener(object : OwnedProductListener {
-            override fun onOwned(productId: String) {
+        billing.addPurchaseUpdateListener(object : PurchaseUpdateListener {
+            override fun onProductPurchased(productId: String, transactionDetails: String) {
                 logd("Product with id: $productId owned")
             }
-
         })
         bt_offer_year.postDelayed({
 
