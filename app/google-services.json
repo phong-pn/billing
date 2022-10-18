@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "875787066047",
+    "project_id": "lib---prox-utils",
+    "storage_bucket": "lib---prox-utils.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:875787066047:android:00dfa83cb0ad9d599ac40a",
+        "android_client_info": {
+          "package_name": "com.proxglobal.lib.pro"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "875787066047-phr71lo6ohlcllk74400tr3f90b3a1o6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDbE1yKKxLeJYS6-U5ET719BPrumzE-iB0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "875787066047-phr71lo6ohlcllk74400tr3f90b3a1o6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:875787066047:android:3957c1ca893740159ac40a",
+        "android_client_info": {
+          "package_name": "com.proxglobal.proxlibiap"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "875787066047-phr71lo6ohlcllk74400tr3f90b3a1o6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDbE1yKKxLeJYS6-U5ET719BPrumzE-iB0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "875787066047-phr71lo6ohlcllk74400tr3f90b3a1o6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

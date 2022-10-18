@@ -2,6 +2,7 @@ package com.proxglobal.proxlibiap
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import com.example.sale_lib.sale.controller.ProxSale
 import com.proxglobal.proxlibiap.util.logd
 import kotlinx.android.synthetic.main.activity_main.*
 

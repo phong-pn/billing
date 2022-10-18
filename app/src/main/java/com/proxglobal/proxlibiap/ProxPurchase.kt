@@ -22,8 +22,8 @@ class ProxPurchase private constructor() : PurchasesUpdatedListener,
 
     private lateinit var billingClient: BillingClient
 
-    private val listSubscriptionId = arrayListOf<String>()
-    private val listOneTimeProductId = arrayListOf<String>()
+    private val setSubscriptionId = mutableSetOf<String>()
+    private val setOneTimeProductId = mutableSetOf<String>()
     private val listConsumableId = arrayListOf<String>()
 
     private val productDetailMap = hashMapOf<String, ProductDetails>()
@@ -61,18 +61,18 @@ class ProxPurchase private constructor() : PurchasesUpdatedListener,
             .enablePendingPurchases()
             .build()
         logd("billing client initializing...")
-        this.listSubscriptionId.addAll(listSubscriptionId)
-        this.listOneTimeProductId.addAll(listOneTimeProductId)
+        this.setSubscriptionId.addAll(listSubscriptionId)
+        this.setOneTimeProductId.addAll(listOneTimeProductId)
         if (!billingClient.isReady) startConnection()
     }
 
     fun addOneTimeProductId(listId: List<String>) {
-        listOneTimeProductId.addAll(listId)
+        setOneTimeProductId.addAll(listId)
         queryProductDetails()
     }
 
     fun addSubscriptionId(listId: List<String>) {
-        listSubscriptionId.addAll(listId)
+        setSubscriptionId.addAll(listId)
         queryProductDetails()
     }
 
@@ -111,7 +111,7 @@ class ProxPurchase private constructor() : PurchasesUpdatedListener,
         val subDetailParams = QueryProductDetailsParams.newBuilder()
 
         val subscriptionList: MutableList<QueryProductDetailsParams.Product> = arrayListOf()
-        for (id in listSubscriptionId) {
+        for (id in setSubscriptionId) {
             subscriptionList.add(
                 QueryProductDetailsParams.Product.newBuilder()
                     .setProductId(id)
@@ -122,7 +122,7 @@ class ProxPurchase private constructor() : PurchasesUpdatedListener,
 
         val productDetailParams = QueryProductDetailsParams.newBuilder()
         val productList = arrayListOf<QueryProductDetailsParams.Product>()
-        listOneTimeProductId.forEach { id ->
+        setOneTimeProductId.forEach { id ->
             productList.add(
                 QueryProductDetailsParams.Product.newBuilder()
                     .setProductId(id)
