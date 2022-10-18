@@ -2,8 +2,8 @@ package com.proxglobal.proxlibiap
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import com.proxglobal.purchase.ProxPurchase
-import com.proxglobal.purchase.PurchaseUpdateListener
+import com.proxglobal.purchasev2.ProxPurchase
+import com.proxglobal.purchasev2.PurchaseUpdateListener
 import com.proxglobal.purchasev2.util.logd
 import kotlinx.android.synthetic.main.activity_main.*
 
