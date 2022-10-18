@@ -2,8 +2,9 @@ package com.proxglobal.proxlibiap
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import com.example.sale_lib.sale.controller.ProxSale
-import com.proxglobal.proxlibiap.util.logd
+import com.proxglobal.purchase.ProxPurchase
+import com.proxglobal.purchase.PurchaseUpdateListener
+import com.proxglobal.purchasev2.util.logd
 import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
@@ -15,7 +16,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        val billing = ProxPurchase.instance
+        val billing = ProxPurchase.getInstance()
 
 
         billing.addPurchaseUpdateListener(object : PurchaseUpdateListener {
@@ -27,10 +28,22 @@ class MainActivity : AppCompatActivity() {
         bt_offer_year.postDelayed({
             billing.checkPurchased().logd()
 
-            val baseMonth = ProxPurchase.instance.getBasePlan("lib_iap_premium", listOf("monthly-premium"))
-            val offersMonth = baseMonth?.let { ProxPurchase.instance.getOfferSubscription(it, listOf("offer-monthly")) }
-            val baseYear = ProxPurchase.instance.getBasePlan("lib_iap_premium", listOf("yearly-premium"))
-            val offerYear = baseYear?.let { ProxPurchase.instance.getOfferSubscription(it, listOf("offer-yearly")) }
+            val baseMonth =
+                ProxPurchase.getInstance().getBasePlan("lib_iap_premium", listOf("monthly-premium"))
+            val offersMonth = baseMonth?.let {
+                ProxPurchase.getInstance().getOfferSubscription(
+                    it,
+                    listOf("offer-monthly")
+                )
+            }
+            val baseYear =
+                ProxPurchase.getInstance().getBasePlan("lib_iap_premium", listOf("yearly-premium"))
+            val offerYear = baseYear?.let {
+                ProxPurchase.getInstance().getOfferSubscription(
+                    it,
+                    listOf("offer-yearly")
+                )
+            }
             bt_base_month.setOnClickListener {
                 if (baseMonth != null) {
                     billing.subscribe(this, baseMonth)
@@ -39,7 +52,8 @@ class MainActivity : AppCompatActivity() {
 
             bt_offer_month.setOnClickListener {
                 offersMonth?.get(0)?.let {
-                    billing.subscribe(this,  it ) }
+                    billing.subscribe(this, it)
+                }
 
             }
 
@@ -50,7 +64,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             bt_offer_year.setOnClickListener {
-                offerYear?.get(0)?.let { billing.subscribe(this,  it) }
+                offerYear?.get(0)?.let { billing.subscribe(this, it) }
             }
         }, 2000)
     }

@@ -10,6 +10,15 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        jcenter()
+        maven { url 'https://jitpack.io' }
+        maven{
+            url "${artifactory_contextUrl}"
+            credentials{
+                username = "${artifactory_user}"
+                password = "${artifactory_password}"
+            }
+        }
     }
 }
 rootProject.name = "ProxLibIap"

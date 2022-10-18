@@ -1,29 +1,35 @@
 package com.proxglobal.proxlibiap
 
-import android.app.Application
-import com.example.sale_lib.sale.controller.ProxSale
-import com.proxglobal.proxlibiap.data.sharepreference.ProxPreferences
-import com.proxglobal.proxlibiap.util.DataState
-import com.proxglobal.proxlibiap.util.logd
+import com.proxglobal.proxads.ads.openads.ProxOpenAdsApplication
+import com.proxglobal.purchase.ProxPurchase
+import com.proxglobal.purchasev2.controller.ProxSale
+import com.proxglobal.purchasev2.util.DataState
+import com.proxglobal.purchasev2.util.logd
 
-class MyApp: Application() {
+class MyApp : ProxOpenAdsApplication() {
     override fun onCreate() {
         super.onCreate()
-        ProxPurchase.instance.apply {
-            init(this@MyApp)
-        }
-
-        ProxPreferences.init(this)
+//        ProxPurchase.getInstance().addOneTimeProductId(listOf("one_time_payment"))
         ProxSale.fetch {
             ProxSale.defaultSaleEvent?.logd()
             if (it is DataState.Success) {
                 it.data?.apply {
-                    ProxPurchase.instance.apply {
-                        addOneTimeProductId(getAllOneTimeProduct().map { it.productId })
+                    pricePlans.forEach {
+                        it.saleSubscriptions.logd()
+                    }
+                    ProxPurchase.getInstance().run {
+                        getAllSubscription().size.logd()
+                        addOneTimeProductId(getAllOneTimeProduct().map {
+                            it.logd()
+                            it.productId })
                         addSubscriptionId(getAllSubscription().map { it.productId })
                     }
                 }
             }
         }
     }
+
+    override fun getOpenAdsId(): String = ""
+
+    override fun getListTestDeviceId(): MutableList<String> = mutableListOf()
 }
