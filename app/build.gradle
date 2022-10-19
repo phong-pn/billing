@@ -69,12 +69,15 @@ dependencies {
     def billing_version = "5.0.0"
     implementation "com.android.billingclient:billing-ktx:$billing_version"
     implementation 'com.google.code.gson:gson:2.9.0'
-
+    implementation 'androidx.core:core-splashscreen:1.0.0-beta02'
     implementation platform('com.google.firebase:firebase-bom:30.2.0')
     implementation 'com.google.firebase:firebase-analytics-ktx'
     implementation 'com.google.firebase:firebase-inappmessaging-display-ktx'
     implementation 'com.google.firebase:firebase-messaging-ktx'
     implementation 'com.google.firebase:firebase-config-ktx:21.0.2'
 
-    implementation "prox-lib:prox-utils-sale_off:1.4.0"
+    def lifecycle_version = "2.2.0"
+    implementation "androidx.lifecycle:lifecycle-extensions:$lifecycle_version"
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.5.1"
+    implementation "prox-lib:prox-utils-sale_off:1.4.2"
 }
