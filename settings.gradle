@@ -11,10 +11,11 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         jcenter()
+        maven { url "https://android-sdk.is.com" }
         maven { url 'https://jitpack.io' }
-        maven{
+        maven {
             url "${artifactory_contextUrl}"
-            credentials{
+            credentials {
                 username = "${artifactory_user}"
                 password = "${artifactory_password}"
             }

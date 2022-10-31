@@ -1,30 +1,31 @@
 package com.proxglobal.proxlibiap
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.isVisible
 import androidx.lifecycle.ViewModelProviders
-import com.proxglobal.purchase.ProxPurchase
-import com.proxglobal.purchase.PurchaseUpdateListener
+import com.phongpn.countdown.util.logd
+import com.proxglobal.proxlibiap.ui.SaleDialog
+import com.proxglobal.proxlibiap.utils.showSale
+import com.proxglobal.purchase.controller.ProxSale
+import com.proxglobal.purchase.sale.ProductPlan
+import com.proxglobal.purchase.sale.Script
 import com.proxglobal.util.logd
+import com.proxglobal.util.logdSelf
 import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
     private lateinit var premiumViewModel: PremiumViewModel
+    private lateinit var mainViewModel: MainViewModel
     override fun onCreate(savedInstanceState: Bundle?) {
 //        installSplashScreen()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-//        bt_cta.postDelayed({
-            premiumViewModel = ViewModelProviders.of(this)[PremiumViewModel::class.java]
-            addObserver()
-            bt_cta.setOnClickListener {
-                supportFragmentManager.beginTransaction()
-                    .add(android.R.id.content, PremiumFragment(), null)
-                    .commit()
-            }
-//        }, 200)
+        premiumViewModel = ViewModelProviders.of(this)[PremiumViewModel::class.java]
+        mainViewModel = ViewModelProviders.of(this)[MainViewModel::class.java]
+        addObserver()
+        addEvent()
 
     }
 
@@ -38,58 +39,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        val billing = ProxPurchase.getInstance()
+    private fun addEvent() {
+        bt_cta.setOnClickListener {
+            supportFragmentManager.beginTransaction()
+                .add(android.R.id.content, PremiumFragment.newInstance(false), null)
+                .commit()
+        }
 
-
-        billing.addPurchaseUpdateListener(object : PurchaseUpdateListener {
-            override fun onProductPurchased(productId: String) {
-                logd("Product with id: $productId owned")
-            }
-        })
-
-//        bt_offer_year.postDelayed({
-//            billing.checkPurchased().logd()
-//
-//            val baseMonth =
-//                ProxPurchase.getInstance().getBasePlan("lib_iap_premium", listOf("monthly-premium"))
-//            val offersMonth = baseMonth?.let {
-//                ProxPurchase.getInstance().getOfferSubscription(
-//                    it,
-//                    listOf("offer-monthly")
-//                )
-//            }
-//            val baseYear =
-//                ProxPurchase.getInstance().getBasePlan("lib_iap_premium", listOf("yearly-premium"))
-//            val offerYear = baseYear?.let {
-//                ProxPurchase.getInstance().getOfferSubscription(
-//                    it,
-//                    listOf("offer-yearly")
-//                )
-//            }
-//            bt_base_month.setOnClickListener {
-//                if (baseMonth != null) {
-//                    billing.subscribe(this, baseMonth)
-//                }
-//            }
-//
-//            bt_offer_month.setOnClickListener {
-//                offersMonth?.get(0)?.let {
-//                    billing.subscribe(this, it)
-//                }
-//
-//            }
-//
-//            bt_base_year.setOnClickListener {
-//                if (baseYear != null) {
-//                    billing.subscribe(this, baseYear)
-//                }
-//            }
-//
-//            bt_offer_year.setOnClickListener {
-//                offerYear?.get(0)?.let { billing.subscribe(this, it) }
-//            }
-//        }, 2000)
+        bt_add_point.setOnClickListener {
+            mainViewModel.onClickAdd(
+                this,
+                onShowPremium = {
+                    bt_cta.performClick()
+                },
+                onCancelShowSale = {
+                    Toast.makeText(this, "Click Add", Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
     }
 }

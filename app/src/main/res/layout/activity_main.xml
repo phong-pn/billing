@@ -7,6 +7,18 @@
     tools:context=".MainActivity">
 
     <Button
+        android:id="@+id/bt_add_point"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="add point"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.086" />
+
+    <Button
         android:id="@+id/bt_cta"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -20,7 +32,7 @@
         android:id="@+id/premium_content"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:constraint_referenced_ids="imageView3, text"/>
+        app:constraint_referenced_ids="imageView3, text" />
 
     <ImageView
         android:id="@+id/imageView3"

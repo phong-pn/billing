@@ -4,15 +4,25 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProviders
-import kotlinx.android.synthetic.main.activity_main.*
+import com.proxglobal.purchase.controller.ProxSale
 import kotlinx.android.synthetic.main.premium_layout.*
 
 class PremiumFragment: Fragment() {
     private lateinit var premiumViewModel: PremiumViewModel
+
+    private var onClose: (() -> Unit)? = null
+    private var showAdsAfterClose: Boolean = false
+
+    companion object {
+        fun newInstance(showAdsAfterClose: Boolean = false, onClose: (() -> Unit)? = null): PremiumFragment {
+            return PremiumFragment().apply {
+                this.onClose = onClose
+                this.showAdsAfterClose = showAdsAfterClose
+            }
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -25,16 +35,37 @@ class PremiumFragment: Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         premiumViewModel = ViewModelProviders.of(requireActivity())[PremiumViewModel::class.java]
         super.onViewCreated(view, savedInstanceState)
+        addEvent()
         addObserver()
-        button3.setOnClickListener {
-            premiumViewModel.subscribeOfferMonly(requireActivity())
+        bt_buy_year.setOnClickListener {
+            premiumViewModel.buyMonth(requireActivity())
+        }
+    }
+
+    private fun addEvent() {
+        close_premium.setOnClickListener {
+            if (showAdsAfterClose) {
+                //showAds, after that call onClose
+            } else {
+                onClose?.invoke()
+                parentFragmentManager.beginTransaction().remove(this).commit()
+            }
         }
     }
 
     private fun addObserver() {
         premiumViewModel.uiState.observe(viewLifecycleOwner) {
-            base_month_price.text = it.baseMonthlyPrice
-            offer_month_price.text = it.offerMonthlyPrice
+            if (ProxSale.currentSaleEvent?.isSaleOff == true) {
+                base_month_price.text =
+                    "base = ${it.baseMonthlyPrice}, sale soc sap san ${it.discountMonthly}%, con ${it.offerMonthlyPrice}"
+                offer_month_price.text =
+                    "base = ${it.basePlanYearlyPrice}, sale soc sap san ${it.discountYearly}%, con ${it.offerYearlyPrice}"
+            } else {
+                base_month_price.text =
+                    "base = ${it.baseMonthlyPrice}"
+                offer_month_price.text =
+                    "base = ${it.basePlanYearlyPrice}"
+            }
         }
     }
 }
