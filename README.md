@@ -6,7 +6,7 @@
 -
 ## Implementation
 ```
-implementation "prox-lib:prox-utils-max-saleoff:2.3.6.26" // for max-ads
+implementation "prox-lib:prox-utils-max-saleoff:2.3.7.3" // for max-ads
 implementation "prox-lib:prox-utils-admob-saleoff:1.4.4" // for admob-ads, chưa update lastest code. Please wait
 ```
 

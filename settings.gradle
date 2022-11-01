@@ -1,7 +1,12 @@
+import org.gradle.api.initialization.resolve.RepositoriesMode
+
 pluginManagement {
     repositories {
         gradlePluginPortal()
         google()
+        flatDir {
+            dirs 'libs'
+        }
         mavenCentral()
     }
 }
@@ -11,6 +16,9 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         jcenter()
+        flatDir {
+            dirs 'libs'
+        }
         maven { url "https://android-sdk.is.com" }
         maven { url 'https://jitpack.io' }
         maven {
