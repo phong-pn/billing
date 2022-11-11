@@ -11,8 +11,7 @@ import com.proxglobal.purchase.sale.Script
 
 class MainViewModel: ViewModel() {
     var clickAddCount = 0
-    private val currentPlan: ProductPlan?
-        get() = ProxSale.currentSaleEvent?.getValidProductPurchase()
+
 
     fun onClickAdd(
         context: Context,
