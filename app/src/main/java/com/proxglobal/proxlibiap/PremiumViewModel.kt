@@ -2,27 +2,20 @@ package com.proxglobal.proxlibiap
 
 import android.app.Activity
 import android.app.Application
-import android.os.Handler
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
-import com.phongpn.countdown.util.logd
 import com.proxglobal.purchase.PurchaseUpdateListener
 import com.proxglobal.purchase.billing.ProxPurchase
 import com.proxglobal.purchase.controller.ProxSale
 import com.proxglobal.purchase.model.BasePlanSubscription
 import com.proxglobal.purchase.model.OfferSubscription
 import com.proxglobal.purchase.model.OnetimeProduct
-import com.proxglobal.purchase.sale.ProductPlan
-import com.proxglobal.purchase.sale.product.SaleBasePlan
-import com.proxglobal.purchase.sale.product.SaleOffer
+import com.proxglobal.util.logeSelf
 
 class PremiumViewModel(application: Application) : AndroidViewModel(application) {
-    var currentPricePlan: MutableLiveData<ProductPlan> = MutableLiveData()
     var billing = ProxPurchase.getInstance()
 
     var uiState = MutableLiveData(PremiumUiState(isPurchased = billing.checkPurchased()))
-    lateinit var basePlanMonth: BasePlanSubscription
-    var offerMonth: OfferSubscription? = null
 
     lateinit var monthBasePlanSubscription: BasePlanSubscription
     lateinit var yearBasePlanSubscription: BasePlanSubscription
@@ -31,8 +24,13 @@ class PremiumViewModel(application: Application) : AndroidViewModel(application)
     var monthOfferSubscription: OfferSubscription? = null
     var yearOfferSubscription: OfferSubscription? = null
     var offerOnetimeProduct: OnetimeProduct? = null
+
     init {
         billing.addPurchaseUpdateListener(object : PurchaseUpdateListener {
+            override fun onOwnedProduct(productId: String) {
+
+            }
+
             override fun onProductPurchased(productId: String) {
                 super.onProductPurchased(productId)
                 uiState.postValue {
@@ -41,76 +39,38 @@ class PremiumViewModel(application: Application) : AndroidViewModel(application)
             }
         })
 
-        Handler().postDelayed({
-            getPrice()
-        }, 2000)
+        billing.checkPurchased().logeSelf()
+
+        ProxPurchase.getInstance().addInitBillingFinishListener {
+            if (it) {
+                "billing is available".logeSelf()
+                getPrice()
+                billing.checkPurchased().logeSelf()
+            }
+        }
     }
 
     private fun getPrice() {
-        currentPricePlan.value = ProxSale.currentSaleEvent!!.getValidProductPurchase()
+        val currentPlan = ProxSale.currentSaleEvent!!.getValidProductPlan()
 
-        val monthBasePlan = currentPricePlan.value?.getMonthlyBasePlan()!!
-        monthBasePlanSubscription = billing.getBasePlanSubscription(monthBasePlan)
-        val offerMonth = monthBasePlan.getValidOffer()
-        monthOfferSubscription = offerMonth?.let { getOffer(monthBasePlan, it) }
+        monthBasePlanSubscription = currentPlan.getMonthlyBasePlanSubscription()!!
+        monthOfferSubscription = currentPlan.getValidMonthlyOfferSubscription()
 
-        val yearBasePlan = currentPricePlan.value!!.getYearlyBasePlan()!!
-        yearBasePlanSubscription = billing.getBasePlanSubscription(yearBasePlan)
-        yearOfferSubscription =
-            yearBasePlan.getValidOffer()?.let { billing.getOfferSubscription(yearBasePlan, it) }
+        yearBasePlanSubscription = currentPlan.getYearlyBasePlanSubscription()!!
+        yearOfferSubscription = currentPlan.getValidYearlyOfferSubscription()
 
-        val saleOneTimeProducts = currentPricePlan.value!!.saleOneTimeProduct
-        onetimeProduct = billing.getOneTimeProduct(saleOneTimeProducts.base)
-        offerOnetimeProduct = saleOneTimeProducts.getValidOffer()?.let { billing.getOneTimeProduct(it) }
+        onetimeProduct = currentPlan.getBaseOneTimeProduct()!!
+        offerOnetimeProduct = currentPlan.getValidOfferOneTimeProduct()
 
 
         uiState.postValue {
             baseMonthlyPrice = monthBasePlanSubscription.price
             offerMonthlyPrice = monthOfferSubscription?.getDiscountPhase()?.price
-            discountMonthly = offerMonth?.percent ?: 0
 
             basePlanYearlyPrice = yearBasePlanSubscription.price
             offerYearlyPrice = yearOfferSubscription?.getDiscountPhase()?.price
-            discountYearly = yearBasePlan.getValidOffer()?.percent ?: 0
 
             onetimeProductPrice = onetimeProduct.price
-        }
-
-    }
-
-
-    fun getOffer(saleBasePlan: SaleBasePlan, saleOffer: SaleOffer): OfferSubscription {
-        return billing.getOfferSubscription(saleBasePlan, saleOffer)
-
-
-    }
-
-    fun subscribe(activity: Activity) {
-        var billing = ProxPurchase.getInstance()
-        val currentPlan = ProxSale.currentSaleEvent?.getValidProductPurchase()
-        if (currentPlan != null) {
-            val monthBasePlan = currentPlan.getMonthlyBasePlan()
-
-            monthBasePlan?.let { monthBasePlan ->
-                monthBasePlanSubscription = billing.getBasePlanSubscription(monthBasePlan)
-                val offerMonth = monthBasePlan.getValidOffer()
-                offerMonth?.let { offer ->
-                    monthOfferSubscription = billing.getOfferSubscription(monthBasePlan, offer)
-                }
-
-                val baseMonthPrice = monthBasePlanSubscription.price
-                val offerMonthPrice = monthOfferSubscription?.getDiscountPhase()?.price
-            }
-
-
-            val yearBasePlan = currentPlan.getYearlyBasePlan()
-            val offerYearly = yearBasePlan?.getValidOffer()
-
-            val saleOneTimeProducts = currentPlan.saleOneTimeProduct
-            val offerOneTime = saleOneTimeProducts.getValidOffer()
-            onetimeProduct = billing.getOneTimeProduct(saleOneTimeProducts.base)
-        } else {
-            logd("Not found any valid Product Plan")
         }
     }
 

@@ -10,8 +10,12 @@ import com.proxglobal.util.logd
 class MyApp : MaxOpenAdsApplication() {
     override fun onCreate() {
         super.onCreate()
-        ProxSale.currentSaleEvent
-        ProxSale.defaultSaleEvent
+        ProxSale.apply {
+            enableLogging = false
+            testMode = true
+            useOnlySaleDefault = true
+        }
+        ProxPurchase.getInstance().enableLogging = false
     }
 
     override fun getOpenAdsId(): String = ""

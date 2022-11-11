@@ -1,18 +1,25 @@
 # ProxPurchase And Sale off example
 
 ## Features
+
 - Lấy config sale off từ Remote Config. Xem thêm document về config sale off tại [đây]
 - ProxPurchase với thư viện Google Play Billing 5. Xem thêm về [thư viện  Google Billing]
 -
+
 ## Implementation
+
 ```
 implementation "prox-lib:prox-utils-max-saleoff:2.3.7.3" // for max-ads
 implementation "prox-lib:prox-utils-admob-saleoff:1.4.4" // for admob-ads, chưa update lastest code. Please wait
 ```
 
 ## Config trong RemoteConfig
-**1. Params: config_purchase_id:**  chứa id của tất cả các subscription và one time product. Mỗi khi thêm 1 product hay subscription, đều phải thêm id vào config này
+
+**1. Params: config_purchase_id:**  chứa id của tất cả các subscription và one time product. Mỗi khi
+thêm 1 product hay subscription, đều phải thêm id vào config này
+
 - Sample:
+
 ```
 param name: config_purchase_id
 value:
@@ -27,7 +34,9 @@ value:
 ```
 
 **2. Các params sale**. Xem thêm ocument về sale-off, quy tắc đặt tên params tại [đây]
+
 - Sample
+
 ```
 {
   "content_default": {
@@ -134,8 +143,8 @@ value:
 }
 ```
 
-
 ## ProxSale: Object lấy thông tin về saleEvent
+
 - Lấy sale event:
 
 ```sh
@@ -144,24 +153,22 @@ ProxSale.defaultSaleEvent // sale-default event
 ```
 
 - Các product, subs, baseplan, offer
+
 ```
-      val currentPlan = ProxSale.currentSaleEvent?.getValidProductPurchase()
+        val currentPlan = ProxSale.currentSaleEvent!!.getValidProductPlan()
 
-        if (currentPlan != null) {
-            val monthBasePlan = currentPlan.getMonthlyBasePlan()
-            val offerMonth = monthBasePlan?.getValidOffer()
+        monthBasePlanSubscription = currentPlan.getMonthlyBasePlanSubscription()!!
+        monthOfferSubscription = currentPlan.getValidMonthlyOfferSubscription()
 
-            val yearBasePlan = currentPlan.getYearlyBasePlan()
-            val offerYearly = yearBasePlan?.getValidOffer()
+        yearBasePlanSubscription = currentPlan.getYearlyBasePlanSubscription()!!
+        yearOfferSubscription = currentPlan.getValidYearlyOfferSubscription()
 
-            val saleOneTimeProducts = currentPlan.saleOneTimeProduct
-            val offerOneTime = saleOneTimeProducts.getValidOffer()
-            onetimeProduct = billing.getOneTimeProduct(saleOneTimeProducts.base)
-        } else {
-            Log.d(TAG, "Not found any valid Product Plan")
-        }
+        onetimeProduct = currentPlan.getBaseOneTimeProduct()!!
+        offerOnetimeProduct = currentPlan.getValidOfferOneTimeProduct()
 ```
+
 - Show sale script
+
 ```
  ProxSale.showSale(actionId, currentPlan, object : DefaultShowSaleBehavior(
         numberTypeChecker = condition
@@ -182,51 +189,68 @@ ProxSale.defaultSaleEvent // sale-default event
 ```
 
 ## ProxPurchase
-- Nếu không dùng Remote Config để truyền id qua config_purchase_id, cần thêm các id bằng các thú công:
+
+- Nếu không dùng Remote Config để truyền id qua config_purchase_id, cần thêm các id bằng các thú
+  công:
+
 ```
 ProxPurchase.getInstance().addOneTimeProductId(oneTimeProductId)
 ProxPurchase.getInstance().addSubscriptionId(subscriptionId)
 ```
 
-- Lấy thông tin của các  product
+- Trước khi show ads, checkpurchase, cần chờ ProxPurchase init xong. NÊN gọi addInitBillingFinishListener trong màn Splash
+
 ```
- var billing = ProxPurchase.getInstance()
- val currentPlan = ProxSale.currentSaleEvent?.getValidProductPurchase()
- val monthBasePlan = currentPlan.getMonthlyBasePlan()
-    monthBasePlan?.let { monthBasePlan ->
-         monthBasePlanSubscription = billing.getBasePlanSubscription(monthBasePlan)
-        val offerMonth = monthBasePlan.getValidOffer()
-        offerMonth?.let { offer ->
-             monthOfferSubscription = billing.getOfferSubscription(monthBasePlan, offer)
-        }
-        //Get price
-        val baseMonthPrice = monthBasePlanSubscription.price
-        val offerMonthPrice = monthOfferSubscription?.getDiscountPhase()?.price
+  ProxPurchase.getInstance().addInitBillingFinishListener {
+    if (it) {
+        showSplash()
+        getGoMainActivity()
     }
+}
+```
+
+- Lấy thông tin của các product
+
+```
+            baseMonthlyPrice = monthBasePlanSubscription.price
+            offerMonthlyPrice = monthOfferSubscription?.getDiscountPhase()?.price
+
+            basePlanYearlyPrice = yearBasePlanSubscription.price
+            offerYearlyPrice = yearOfferSubscription?.getDiscountPhase()?.price
+
+            onetimeProductPrice = onetimeProduct.price
 
 ```
 
 - Purchase/Subscribe
+
 ```
     ProxPurchase.getInstance().subscribe(activity, subscription)
     ProxPurchase.getInstance().purchase(activity, oneTimeProduct)
 ```
 
 - Kiểm tra purchase
+
 ```
 ProxPurchase.getInstance().checkPurchase() // true nếu user có ít nhất 1 one time product hoặc available subscription
 ProxPurchase.getInstance().isPurchase(productId)
 ```
 
 [thư viện Google Billing]: <https://support.google.com/googleplay/android-developer/answer/12154973?hl=vi&ref_topic=345289>
+
 [đây]: <https://www.figma.com/file/cqG2LMeQvsKliLBKBZEmFq/Document_Remote_Sale?node-id=0%3A1>
 
 [Gulp]: <http://gulpjs.com>
 
 [PlDb]: <https://github.com/joemccann/dillinger/tree/master/plugins/dropbox/README.md>
+
 [PlGh]: <https://github.com/joemccann/dillinger/tree/master/plugins/github/README.md>
+
 [PlGd]: <https://github.com/joemccann/dillinger/tree/master/plugins/googledrive/README.md>
+
 [PlOd]: <https://github.com/joemccann/dillinger/tree/master/plugins/onedrive/README.md>
+
 [PlMe]: <https://github.com/joemccann/dillinger/tree/master/plugins/medium/README.md>
+
 [PlGa]: <https://github.com/RahulHP/dillinger/blob/master/plugins/googleanalytics/README.md>
 1

@@ -37,9 +37,6 @@ class PremiumFragment: Fragment() {
         super.onViewCreated(view, savedInstanceState)
         addEvent()
         addObserver()
-        bt_buy_year.setOnClickListener {
-            premiumViewModel.buyMonth(requireActivity())
-        }
     }
 
     private fun addEvent() {
@@ -50,6 +47,15 @@ class PremiumFragment: Fragment() {
                 onClose?.invoke()
                 parentFragmentManager.beginTransaction().remove(this).commit()
             }
+        }
+        bt_buy_year.setOnClickListener {
+            premiumViewModel.buyYear(requireActivity())
+        }
+        bt_one_time.setOnClickListener {
+            premiumViewModel.buyOneTime(requireActivity())
+        }
+        bt_buy_month.setOnClickListener {
+            premiumViewModel.buyMonth(requireActivity())
         }
     }
 

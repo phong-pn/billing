@@ -13,8 +13,8 @@ android {
         applicationId "com.proxglobal.proxlibiap"
         minSdk 24
         targetSdk 32
-        versionCode 5
-        versionName "1.0.4"
+        versionCode 10
+        versionName "1.0.10"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -78,7 +78,7 @@ dependencies {
     def lifecycle_version = "2.2.0"
     implementation "androidx.lifecycle:lifecycle-extensions:$lifecycle_version"
     implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.5.1"
-    implementation "prox-lib:prox-utils-max-saleoff:2.3.7.3"
+    implementation "prox-lib:prox-utils-max-saleoff:2.4.1.1.2"
     implementation 'com.github.phong-pn:count_down_view:1.1.1-beta'
 
     //glide

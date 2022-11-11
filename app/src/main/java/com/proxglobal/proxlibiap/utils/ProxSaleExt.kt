@@ -12,7 +12,7 @@ import com.proxglobal.purchase.sale.Script
 import com.proxglobal.purchase.util.Action
 
 val currentPlan: ProductPlan?
-    get() = ProxSale.currentSaleEvent?.getValidProductPurchase()
+    get() = ProxSale.currentSaleEvent?.getValidProductPlan()
 
 fun showSale(
     actionId: Int,
