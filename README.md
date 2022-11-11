@@ -9,7 +9,7 @@
 ## Implementation
 
 ```
-implementation "prox-lib:prox-utils-max-saleoff:2.3.8.1" // for max-ads
+implementation "prox-lib:prox-utils-max-saleoff:2.4.1.1.2" // for max-ads
 implementation "prox-lib:prox-utils-admob-saleoff:1.4.4" // for admob-ads, chưa update lastest code. Please wait
 ```
 
@@ -152,6 +152,11 @@ ProxSale.currentSaleEvent // sale-off event, if exist. Else sale-default event
 ProxSale.defaultSaleEvent // sale-default event
 ```
 
+- Test
+```sh
+    ProxSale.testMode = true //use test config
+    ProxSale.useOnlySaleDefault = true // use default config, although have sale-off event
+```
 - Các product, subs, baseplan, offer
 
 ```
@@ -253,4 +258,3 @@ ProxPurchase.getInstance().isPurchase(productId)
 [PlMe]: <https://github.com/joemccann/dillinger/tree/master/plugins/medium/README.md>
 
 [PlGa]: <https://github.com/RahulHP/dillinger/blob/master/plugins/googleanalytics/README.md>
-1
