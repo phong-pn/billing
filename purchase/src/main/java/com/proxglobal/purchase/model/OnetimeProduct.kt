@@ -6,5 +6,6 @@ package com.proxglobal.purchase.model
 data class OnetimeProduct(
     val productId: String,
     val price: String,
+    val priceWithoutCurrency: Float,
     val priceCurrencyCode: String
 )

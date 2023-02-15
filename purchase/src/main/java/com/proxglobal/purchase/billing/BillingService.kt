@@ -12,9 +12,7 @@ import com.proxglobal.purchase.model.BasePlanSubscription
 import com.proxglobal.purchase.model.OfferSubscription
 import com.proxglobal.purchase.model.OnetimeProduct
 import com.proxglobal.purchase.model.Subscription
-import com.proxglobal.purchase.util.findBasePlan
-import com.proxglobal.purchase.util.logd
-import com.proxglobal.purchase.util.logeSelf
+import com.proxglobal.purchase.util.*
 import kotlinx.coroutines.*
 import kotlin.coroutines.CoroutineContext
 
@@ -39,6 +37,9 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
     private val listConsumableId = arrayListOf<String>()
 
     private val productDetailMap = hashMapOf<String, ProductDetails>()
+    private val subscriptionMap = hashMapOf<String, Subscription>()
+    private val onetimeProductMap = hashMapOf<String, OnetimeProduct>()
+
 
     private val scope = CoroutineScope(Dispatchers.Default)
 
@@ -50,7 +51,6 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
     private val cachedOwnedProducts = mutableSetOf<String>()
     private var syncPurchased = false
 
-    private var queueRunnable = ArrayDeque<Deferred<*>>()
 
     init {
         val ownedProduct = Gson().fromJson<List<String>>(
@@ -125,20 +125,33 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
 
     override fun onBillingServiceDisconnected() {
         logDebug("Billing client is disconnected")
+        retryConnection()
+    }
+
+    val maxRetryConnection = 5
+    var retryCount = 0
+    private fun retryConnection() {
+        if (retryCount < maxRetryConnection) {
+            launch {
+                delay(5000)
+                retryCount++
+                startConnection()
+            }
+        }
     }
 
     override fun onBillingSetupFinished(billingResult: BillingResult) {
         val responseCode = billingResult.responseCode
         val debugMessage = billingResult.debugMessage
         logDebug("onBillingSetupFinished: $responseCode $debugMessage")
+        onInitBillingFinish?.invoke()
         if (responseCode == BillingClient.BillingResponseCode.OK) {
             // The billing client is ready.
             // You can query product details and purchases here.
             queryProductDetails()
-            runBlocking {
-                queryPurchases()
-            }
-            onInitBillingFinish?.invoke()
+            queryPurchases()
+        } else {
+            logDebug("Error when billing setup: error code = $responseCode message = $debugMessage")
         }
     }
 
@@ -189,6 +202,14 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
                             //store detail
                             logDebug("Product details: $productDetail")
                             productDetailMap[productDetail.productId] = productDetail
+
+                            //get subscriptions and put all it into map
+                            productDetail.findAllBasePlan().forEach { basePlan ->
+                                subscriptionMap[basePlan.basePlanId] = basePlan
+                                basePlan.offers.forEach { offer ->
+                                    subscriptionMap[offer.offerId] = offer
+                                }
+                            }
                         }
                     }
                 }
@@ -207,6 +228,10 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
                             logDebug(productDetail.toString())
                             // store detail
                             productDetailMap[productDetail.productId] = productDetail
+                            onetimeProductMap[productDetail.productId] =
+                                productDetail.oneTimePurchaseOfferDetails!!.toOneTimeProduct(
+                                    productDetail.productId
+                                )
                         }
                     }
                 }
@@ -372,16 +397,13 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
         }
     }
 
-    /**
-     * Subscribe a [Subscription]. Result will be update with [PurchaseUpdateListener]
-     * @param activity An Activity starting default billing activity of Google
-     * @param subscription [Subscription] need purchased
-     */
-    fun subscribe(activity: Activity, subscription: Subscription) {
-        val productDetails = productDetailMap[subscription.productId]
-        productDetails?.let {
-            launchBillingFlow(activity, productDetails, subscription.token)
-        } ?: "Can not get product Details. Please check productId of subs: $subscription".logeSelf()
+    fun subscribe(activity: Activity, basePlanOrOfferId: String) {
+        val subs = subscriptionMap[basePlanOrOfferId]
+        subs?.let {
+            val productDetails = productDetailMap[subs.productId]!!
+            launchBillingFlow(activity, productDetails)
+        }
+            ?: "Can not get basePlan or offer. Please check productId of subs: $basePlanOrOfferId".logeSelf()
     }
 
     /**
@@ -393,6 +415,14 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
             launchBillingFlow(activity, productDetails)
         }
             ?: "Can not get product Details. Please check productId of oneTimeProduct: $onetimeProduct".logeSelf()
+    }
+
+    fun purchase(activity: Activity, onetimeProductId: String) {
+        val productDetails = productDetailMap[onetimeProductId]
+        productDetails?.let {
+            launchBillingFlow(activity, productDetails)
+        }
+            ?: "Can not get product Details. Please check productId of oneTimeProduct: $onetimeProductId".logeSelf()
     }
 
     private fun launchBillingFlow(
@@ -410,50 +440,39 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
     }
 
     /**
-     * Return a [BasePlanSubscription] have tags is [basePlanTags], and be owned by a subscription have product id is [subscriptionId].
+     * Return a [BasePlanSubscription] have basePlanId is [basePlanId]
      * Base plan and Offer is come from Google Play Billing Library. For more information, read
      * this [article](https://support.google.com/googleplay/android-developer/answer/12154973?hl=vi&ref_topic=3452890)
-     * @param subscriptionId id of subscription that owned base plan
-     * @param basePlanTags list tags of base plan
+     * @param basePlanId list tags of base plan
+     * @throws NullPointerException if not call [addSubscriptionId] before
      */
-    fun getBasePlan(
-        subscriptionId: String,
-        basePlanId: String
-    ): BasePlanSubscription {
-        var productDetails = productDetailMap[subscriptionId]
-        if (productDetails == null) {
-            addSubscriptionId(listOf(subscriptionId))
-            productDetails = productDetailMap[subscriptionId]
-        }
-        return productDetails?.findBasePlan(basePlanId) ?: throw NullPointerException(
-            "Not found subscription that has id = $subscriptionId. Maybe missing add this subscription with ProxPurchase, or you need waiting more for ProxPurchase's initiation"
-        )
-    }
-
     fun getBasePlan(basePlanId: String): BasePlanSubscription {
-        for (it in productDetailMap.values) {
-            if (it.subscriptionOfferDetails != null) {
-                val basePlan = it.findBasePlan(basePlanId)
-                if (basePlan != null) {
-                    return basePlan
-                }
-            }
+        for (it in subscriptionMap.keys) {
+            if (it == basePlanId) return subscriptionMap[it] as BasePlanSubscription
         }
         throw NullPointerException(
             "Not found any basePlan that has id = $basePlanId. Maybe missing add subscription with ProxPurchase, or you need waiting more for ProxPurchase's initiation"
         )
     }
 
-    fun getOffer(
-        subscriptionId: String,
-        basePlanId: String,
-        offerId: String
-    ): OfferSubscription? = getBasePlan(subscriptionId, basePlanId).offers.find { it.id == offerId }
 
+    /**
+     * Return a [OfferSubscription] have offerId is [offerId]
+     * Base plan and Offer is come from Google Play Billing Library. For more information, read
+     * this [article](https://support.google.com/googleplay/android-developer/answer/12154973?hl=vi&ref_topic=3452890)
+     * @param offerId list tags of base plan
+     * @throws NullPointerException if not call [addSubscriptionId] before
+     */
     fun getOffer(
-        basePlanId: String,
         offerId: String
-    ) = getBasePlan(basePlanId).offers.find { it.id == offerId }
+    ): OfferSubscription {
+        for (it in subscriptionMap.keys) {
+            if (it == offerId) return subscriptionMap[it] as OfferSubscription
+        }
+        throw NullPointerException(
+            "Not found any basePlan that has id = $offerId. Maybe missing add subscription with ProxPurchase, or you need waiting more for ProxPurchase's initiation"
+        )
+    }
 
     fun getOneTimeProduct(oneTimeProductId: String): OnetimeProduct {
         var productDetails = productDetailMap[oneTimeProductId]
@@ -467,9 +486,27 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
                 )
             }
         }
-        return productDetails?.oneTimePurchaseOfferDetails!!.let {
-            OnetimeProduct(oneTimeProductId, it.formattedPrice, it.priceCurrencyCode)
-        }
+        return productDetails?.oneTimePurchaseOfferDetails!!.toOneTimeProduct(productDetails.productId)
+    }
+
+    fun getPrice(id: String): String {
+        return onetimeProductMap[id]?.price ?:
+        subscriptionMap[id]?.let {
+            when(it) {
+                is BasePlanSubscription -> it.price
+                is OfferSubscription -> it.discountPrice
+                else -> ""
+            }
+        } ?: ""
+    }
+
+    fun getDiscountPrice(id: String): String {
+        return subscriptionMap[id]?.let {
+            when(it) {
+                is OfferSubscription -> it.discountPrice
+                else -> ""
+            }
+        } ?: ""
     }
 
     /**
@@ -509,7 +546,7 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
         listPurchaseUpdateListener.forEach {
             try {
                 logDebug("listener ongoing...")
-                it.onProductPurchased(productId)
+                it.onPurchaseSuccess(productId)
             } catch (e: Exception) {
                 e.printStackTrace()
             }

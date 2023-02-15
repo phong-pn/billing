@@ -6,7 +6,6 @@ import com.proxglobal.purchase.PurchaseUpdateListener
 import com.proxglobal.purchase.model.BasePlanSubscription
 import com.proxglobal.purchase.model.OfferSubscription
 import com.proxglobal.purchase.model.OnetimeProduct
-import com.proxglobal.purchase.model.Subscription
 import com.proxglobal.purchase.util.logd
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,50 +34,33 @@ class ProxPurchase private constructor() {
         }
     }
 
-    private val initFinishListener = arrayListOf<(Boolean) -> Unit>()
+    private val initFinishListener = arrayListOf<() -> Unit>()
 
     fun addPurchaseUpdateListener(listener: PurchaseUpdateListener) {
         billingService.addPurchaseUpdateListener(listener)
     }
 
-    fun addInitBillingFinishListener(listener: (Boolean) -> Unit) {
+    fun addInitBillingFinishListener(listener: () -> Unit) {
         initFinishListener.add(listener)
-        if (isAvailable) listener(isAvailable)
+        if (isAvailable) listener()
     }
 
-    private var purchaseIdFetchSuccess = false
     private var initBillingFinish = false
 
-    val isAvailable: Boolean
-        get() = purchaseIdFetchSuccess && initBillingFinish
-
+    var isAvailable = false
     fun init(
         context: Context
     ) {
         billingService.initBillingClient(context)
-//        PurchaseIdSource().fetch {
-//            logDebug("Fetch success product id, subscriptions id = ${it.listSubsId}, one time product id = ${it.listOneTimeProductId}")
-//            billingService.addSubscriptionId(it.listSubsId)
-//            billingService.addOneTimeProductId(it.listOneTimeProductId)
-//            purchaseIdFetchSuccess = true
-//            if (isAvailable)
-//                CoroutineScope(Dispatchers.IO).launch {
-//                    delay(500)
-//                    initFinishListener.forEach {
-//                        it.invoke(isAvailable)
-//                    }
-//                }
-//        }
     }
 
     private fun onInitBillingFinish() {
         initBillingFinish = true
-        if (isAvailable) {
-            CoroutineScope(Dispatchers.IO).launch {
-                delay(500)
-                initFinishListener.forEach {
-                    it.invoke(isAvailable)
-                }
+        isAvailable = true
+        CoroutineScope(Dispatchers.IO).launch {
+            delay(200)
+            initFinishListener.forEach {
+                it.invoke()
             }
         }
     }
@@ -112,56 +94,42 @@ class ProxPurchase private constructor() {
         billingService.end()
     }
 
+
     /**
-     * Subscribe a subscription. [subscription] can be a [BasePlanSubscription] or [OfferSubscription].
+     * Subscribe a subscription.
      * Result will be update with [PurchaseUpdateListener]
      * @param activity: activity that start billing popup
      * @param subscription: a [BasePlanSubscription] or [OfferSubscription]
      *
      */
-    fun subscribe(activity: Activity, subscription: Subscription) {
-        billingService.subscribe(activity, subscription)
+    fun subscribe(activity: Activity, basePlanOrOfferId: String) {
+        billingService.subscribe(activity, basePlanOrOfferId)
     }
 
     /**
      * Purchase a [OnetimeProduct]. Result will be update with [PurchaseUpdateListener]
      */
-    fun purchase(activity: Activity, onetimeProduct: OnetimeProduct) {
-        billingService.purchase(activity, onetimeProduct)
+    fun purchase(activity: Activity, onetimeProductId: String) {
+        billingService.purchase(activity, onetimeProductId)
     }
 
-
-    /**
-     * Return a [BasePlanSubscription] have id is [basePlanId], and be owned by a subscription have product id is [subscriptionId].
-     * Base plan and Offer is come from Google Play Billing Library. For more information, read
-     * this [article](https://support.google.com/googleplay/android-developer/answer/12154973?hl=vi&ref_topic=3452890)
-     * @param subscriptionId id of subscription that owned base plan
-     * @param basePlanId id of base plan
-     */
-    fun getBasePlan(subscriptionId: String, basePlanId: String) =
-        billingService.getBasePlan(subscriptionId, basePlanId)
 
     fun getBasePlan(basePlanId: String) =
         billingService.getBasePlan(basePlanId)
 
-    /**
-     * Return a [OfferSubscription] have id is [offerId], and be owned by a subscription have product id is [subscriptionId].
-     * Base plan and Offer is come from Google Play Billing Library. For more information, read
-     * this [article](https://support.google.com/googleplay/android-developer/answer/12154973?hl=vi&ref_topic=3452890)
-     * @param subscriptionId id of subscription that owned base plan
-     * @param basePlanId id of base plan
-     */
-    fun getOffer(subscriptionId: String, basePlanId: String, offerId: String) =
-        billingService.getOffer(subscriptionId, basePlanId, offerId)
-
-    fun getOffer(basePlanId: String, offerId: String) =
-        billingService.getOffer(basePlanId, offerId)
-
-
-
+    fun getOffer(offerId: String) =
+        billingService.getOffer(offerId)
 
     fun getOneTimeProduct(id: String): OnetimeProduct {
         return billingService.getOneTimeProduct(id)
+    }
+
+    fun getPrice(id: String): String {
+        return billingService.getPrice(id)
+    }
+
+    fun getDiscountPrice(id: String): String {
+        return billingService.getDiscountPrice(id)
     }
 
     /**

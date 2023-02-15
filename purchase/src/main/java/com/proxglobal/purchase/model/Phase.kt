@@ -46,7 +46,7 @@ class Phase(
         }
     }
 
-    private var priceAmount: Long = 0
+    var priceAmount: Long = 0
 
     val isFreeTrial: Boolean
         get() = priceAmount == 0L
