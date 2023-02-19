@@ -23,18 +23,6 @@ ProxPurchase.getInstance().apply {
         }
 ```
 
-- After ProxPurchase's initiation finish, you can get information about products, like checkPurchase(), get price..., or make a purchase. If you need query these informations early, you need add initBillingFinishListner
-
-```
-   ProxPurchase.getInstance().addInitBillingFinishListener {
-            if(ProxPurchase.getInstance().checkPurchased()) {
-                getGoToMain()
-            } else {
-                showAds()
-            }
-        }
-```
-
 - Get Price
 
 ```
@@ -64,6 +52,18 @@ ProxPurchase.getInstance().apply {
 ```
 ProxPurchase.getInstance().checkPurchase() // true if have a vaild subscription or one time product
 ProxPurchase.getInstance().isPurchase(productId)
+```
+
+- After ProxPurchase's initiation finish, you can get information about products, like checkPurchase(), get price..., or make a purchase. If you need query these informations early, you need add initBillingFinishListner
+
+```
+   ProxPurchase.getInstance().addInitBillingFinishListener {
+            if(ProxPurchase.getInstance().checkPurchased()) {
+                getGoToMain()
+            } else {
+                showAds()
+            }
+        }
 ```
 
 [thư viện Google Billing]: <https://support.google.com/googleplay/android-developer/answer/12154973?hl=vi&ref_topic=345289>
