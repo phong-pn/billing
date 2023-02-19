@@ -9,12 +9,13 @@ import com.proxglobal.proxpurchase.game.model.FallObject
 import com.proxglobal.purchase.util.logdSelf
 import kotlinx.coroutines.*
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.coroutines.CoroutineContext
 
 class Render(private val xPosition: Float) : CoroutineScope {
 
 
-    private val listActiveRender = java.util.ArrayDeque<FallObject>()
+    private val listActiveRender = ConcurrentLinkedQueue<FallObject>()
     private val listPoolRender = java.util.ArrayDeque<FallObject>()
     var isPlaying = false
 
@@ -47,8 +48,8 @@ class Render(private val xPosition: Float) : CoroutineScope {
                     val first = listActiveRender.peek()
                     if (first != null) {
                         if (first.y >= Resources.getSystem().displayMetrics.heightPixels) {
-                            val firstActive = listActiveRender.pop()
-                            firstActive.y = 0f
+                            val firstActive = listActiveRender.poll()
+                            firstActive?.y = 0f
                             listPoolRender.push(firstActive)
                         }
                     }
@@ -64,8 +65,9 @@ class Render(private val xPosition: Float) : CoroutineScope {
     fun draw(canvas: Canvas) {
         val list = listActiveRender.toList()
         list.forEach {
-            val rect = it.getCurrentBound()
-            canvas.drawBitmap(it.type.image, rect.left, rect.top, paint)
+            it?.getCurrentBound()?.apply {
+                canvas.drawBitmap(it.type.image, left, top, paint)
+            }
         }
     }
 
@@ -82,9 +84,9 @@ class Render(private val xPosition: Float) : CoroutineScope {
     private fun addObjectToActiveList() {
         if (listPoolRender.size == 0) {
             val newFallObject = FallObject(x =  xPosition, type = FallObject.randomType())
-            listActiveRender.push(newFallObject)
+            listActiveRender.add(newFallObject)
         } else {
-            listActiveRender.push(listPoolRender.pop())
+            listActiveRender.add(listPoolRender.pop())
         }
     }
 

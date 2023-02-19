@@ -3,6 +3,7 @@ package com.proxglobal.purchase.billing
 import android.app.Activity
 import android.content.Context
 import com.android.billingclient.api.*
+import com.android.billingclient.api.BillingClient.BillingResponseCode
 import com.android.billingclient.api.Purchase.PurchaseState
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -143,15 +144,18 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
     override fun onBillingSetupFinished(billingResult: BillingResult) {
         val responseCode = billingResult.responseCode
         val debugMessage = billingResult.debugMessage
-        logDebug("onBillingSetupFinished: $responseCode $debugMessage")
-        onInitBillingFinish?.invoke()
         if (responseCode == BillingClient.BillingResponseCode.OK) {
             // The billing client is ready.
             // You can query product details and purchases here.
+            logDebug("onBillingSetupFinished: $responseCode $debugMessage")
+            onInitBillingFinish?.invoke()
             queryProductDetails()
             queryPurchases()
         } else {
             logDebug("Error when billing setup: error code = $responseCode message = $debugMessage")
+            if (responseCode != BillingResponseCode.DEVELOPER_ERROR) {
+                onInitBillingFinish?.invoke()
+            }
         }
     }
 
@@ -401,20 +405,9 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
         val subs = subscriptionMap[basePlanOrOfferId]
         subs?.let {
             val productDetails = productDetailMap[subs.productId]!!
-            launchBillingFlow(activity, productDetails)
+            launchBillingFlow(activity, productDetails, it.token)
         }
             ?: "Can not get basePlan or offer. Please check productId of subs: $basePlanOrOfferId".logeSelf()
-    }
-
-    /**
-     * Purchase a [OnetimeProduct]. Result will be update with [PurchaseUpdateListener]
-     */
-    fun purchase(activity: Activity, onetimeProduct: OnetimeProduct) {
-        val productDetails = productDetailMap[onetimeProduct.productId]
-        productDetails?.let {
-            launchBillingFlow(activity, productDetails)
-        }
-            ?: "Can not get product Details. Please check productId of oneTimeProduct: $onetimeProduct".logeSelf()
     }
 
     fun purchase(activity: Activity, onetimeProductId: String) {
@@ -436,7 +429,7 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
         val billingParams = BillingFlowParams.newBuilder().setProductDetailsParamsList(
             listOf(params.build())
         ).build()
-        val result = billingClient.launchBillingFlow(activity, billingParams)
+        billingClient.launchBillingFlow(activity, billingParams)
     }
 
     /**

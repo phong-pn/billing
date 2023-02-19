@@ -10,6 +10,7 @@ import android.view.MotionEvent
 import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import com.proxglobal.proxpurchase.game.player.GameRenderView
+import com.proxglobal.proxpurchase.store.StoreFragment
 import com.proxglobal.purchase.billing.ProxPurchase
 import com.proxglobal.purchase.util.logd
 import com.proxglobal.purchase.util.logdSelf
@@ -37,6 +38,9 @@ class MainActivity : AppCompatActivity() {
 
         ProxPurchase.getInstance().addInitBillingFinishListener {
             logd("Init oke")
+            supportFragmentManager.beginTransaction()
+                .add(android.R.id.content, StoreFragment(), null)
+                .commit()
         }
 
         val gameRenderView = findViewById<GameRenderView>(R.id.game_render)
@@ -70,6 +74,7 @@ class MainActivity : AppCompatActivity() {
             }
             true
         }
+
 
 //
 //        Handler(Looper.myLooper()!!).postDelayed({

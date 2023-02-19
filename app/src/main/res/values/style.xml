@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="DefaultText">
+        <item name="fontFamily">@font/iciel_cadena</item>
+        <item name="android:shadowColor">#40000000</item>
+        <item name="android:shadowRadius">3</item>
+        <item name="android:shadowDy">4</item>
+    </style>
+</resources>
