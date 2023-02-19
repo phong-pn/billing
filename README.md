@@ -1,243 +1,68 @@
-# ProxPurchase And Sale off example
+# ProxPurchase
 
 ## Features
 
-- Lấy config sale off từ Remote Config. Xem thêm document về config sale off tại [đây]
 - ProxPurchase với thư viện Google Play Billing 5. Xem thêm về [thư viện  Google Billing]
--
 
 ## Implementation
 
 ```
-implementation "prox-lib:prox-utils-max-saleoff:2.4.1.1.2" // for max-ads
-implementation "prox-lib:prox-utils-admob-saleoff:1.4.4" // for admob-ads, chưa update lastest code. Please wait
-```
-
-## Config trong RemoteConfig
-
-**1. Params: config_purchase_id:**  chứa id của tất cả các subscription và one time product. Mỗi khi
-thêm 1 product hay subscription, đều phải thêm id vào config này
-
-- Sample:
 
 ```
-param name: config_purchase_id
-value:
-{
-  "subscriptions_id": [
-    "lib_iap_premium"
-  ],
-  "one_time_product_id": [
-    "one_time_payment"
-  ]
-}
-```
 
-**2. Các params sale**. Xem thêm ocument về sale-off, quy tắc đặt tên params tại [đây]
-
-- Sample
-
-```
-{
-  "content_default": {
-    "title": "Sale title",
-    "description": "This is description test for default sale",
-    "feature": [
-      "Unlimited Premium Access 🔥",
-      "All Updates & New Features 👆",
-      "Completely Ad Free 🆓",
-      "Quick Access to Your Apps 😎"
-    ],
-    "cta": "Go Premium"
-  },
-  "plans": [
-    {
-      "name": "base_price",
-      "type": "base",
-      "subscriptions": {
-        "product_id": "lib_iap_premium",
-        "base_plans": [
-          {
-            "tags": [
-              "monthly-premium"
-            ],
-            "type": "month"
-          },
-          {
-            "tags": [
-              "yearly-premium"
-            ],
-            "type": "year"
-          }
-        ]
-      },
-      "one_time_products": {
-        "base": {
-          "product_id": "one_time_payment"
-        }
-      }
-    }
-  ],
-  "script": [
-    {
-      "enable": true,
-      "script_name": "click_start",
-      "action_id": 2,
-      "show_type": "full_screen",
-      "show_condition_value": 2,
-      "show_condition_type": "number",
-      "image": [
-        {
-          "name": "banner_top",
-          "url": "kanamomonogi.png"
-        }
-      ]
-    },
-    {
-      "enable": true,
-      "script_name": "click_save_script",
-      "action_id": 3,
-      "show_type": "pop_up",
-      "show_condition_type": "period",
-      "show_condition_value": {
-        "start_time": "2022-10-18T00:00:00+0700",
-        "end_time": "2022-10-30T00:00:00+0700",
-        "enable": false
-      },
-      "image": [
-        {
-          "name": "pop_up_background",
-          "url": "kanamomonogi.png"
-        }
-      ]
-    },
-    {
-      "enable": true,
-      "script_name": "add_point_swipe",
-      "action_id": 5,
-      "show_type": "pop_up",
-      "show_condition_type": "boolean",
-      "show_condition_value": true,
-      "image": [
-        {
-          "name": "pop_up_background",
-          "url": "kanamomonogi.png"
-        }
-      ]
-    },
-    {
-      "enable": false,
-      "script_name": "banner",
-      "action_id": 9,
-      "show_type": "banner",
-      "show_condition_type": "boolean",
-      "show_condition_value": true,
-      "image": [
-        {
-          "name": "banner_background",
-          "url": "kanamomonogi.png"
-        }
-      ]
-    }
-  ]
-}
-```
-
-## ProxSale: Object lấy thông tin về saleEvent
-
-- Lấy sale event:
-
-```sh
-ProxSale.currentSaleEvent // sale-off event, if exist. Else sale-default event
-ProxSale.defaultSaleEvent // sale-default event
-```
-
-- Test
-```sh
-    ProxSale.testMode = true //use test config
-    ProxSale.useOnlySaleDefault = true // use default config, although have sale-off event
-```
-- Các product, subs, baseplan, offer
-
-```
-        val currentPlan = ProxSale.currentSaleEvent!!.getValidProductPlan()
-
-        monthBasePlanSubscription = currentPlan.getMonthlyBasePlanSubscription()!!
-        monthOfferSubscription = currentPlan.getValidMonthlyOfferSubscription()
-
-        yearBasePlanSubscription = currentPlan.getYearlyBasePlanSubscription()!!
-        yearOfferSubscription = currentPlan.getValidYearlyOfferSubscription()
-
-        onetimeProduct = currentPlan.getBaseOneTimeProduct()!!
-        offerOnetimeProduct = currentPlan.getValidOfferOneTimeProduct()
-```
-
-- Show sale script
-
-```
- ProxSale.showSale(actionId, currentPlan, object : DefaultShowSaleBehavior(
-        numberTypeChecker = condition
-    ) {
-        override fun onShow(productPlan: ProductPlan?, script: Script) {
-            if (ProxSale.currentSaleEvent?.isSaleOff == true) { //sale off
-                SaleDialog(context, script, onClickCTA) { onCancel(null) }.show()
-            } else {
-                //sale default
-            }
-        }
-
-        override fun onCancel(script: Script?) {
-            onCancel(null)
-        }
-
-    })
-```
 
 ## ProxPurchase
-
-- Nếu không dùng Remote Config để truyền id qua config_purchase_id, cần thêm các id bằng các thú
-  công:
+- Add all your product id in onCreate() of your Application
 
 ```
-ProxPurchase.getInstance().addOneTimeProductId(oneTimeProductId)
-ProxPurchase.getInstance().addSubscriptionId(subscriptionId)
+ProxPurchase.getInstance().apply {
+            init(context)
+            addSubscriptionId(listOf("subscription_id"))
+            addOneTimeProductId(listOf("one_time_product_id"))
+            addConsumableId(listOf("consumable_id"))
+        }
 ```
 
-- Trước khi show ads, checkpurchase, cần chờ ProxPurchase init xong. NÊN gọi addInitBillingFinishListener trong màn Splash
+- After ProxPurchase's initiation finish, you can get information about products, like checkPurchase(), get price..., or make a purchase. If you need query these informations early, you need add initBillingFinishListner
 
 ```
-  ProxPurchase.getInstance().addInitBillingFinishListener {
-    if (it) {
-        showSplash()
-        getGoMainActivity()
-    }
-}
+   ProxPurchase.getInstance().addInitBillingFinishListener {
+            if(ProxPurchase.getInstance().checkPurchased()) {
+                getGoToMain()
+            } else {
+                showAds()
+            }
+        }
 ```
 
-- Lấy thông tin của các product
+- Get Price
 
 ```
-            baseMonthlyPrice = monthBasePlanSubscription.price
-            offerMonthlyPrice = monthOfferSubscription?.getDiscountPhase()?.price
-
-            basePlanYearlyPrice = yearBasePlanSubscription.price
-            offerYearlyPrice = yearOfferSubscription?.getDiscountPhase()?.price
-
-            onetimeProductPrice = onetimeProduct.price
+    ProxPurchase.getInstance().getPrice(id) // id can be basePlanId, offerId, or oneTimeProductId
 
 ```
 
-- Purchase/Subscribe
+- Make a purchase
 
 ```
-    ProxPurchase.getInstance().subscribe(activity, subscription)
-    ProxPurchase.getInstance().purchase(activity, oneTimeProduct)
+    ProxPurchase.getInstance().addPurchaseUpdateListener(object : PurchaseUpdateListener{
+            override fun onPurchaseFailure(code: Int, errorMsg: String?) {
+            }
+
+            override fun onUserCancelBilling() {
+            }
+
+            override fun onPurchaseSuccess(productId: String) {
+                getGoToPremium()
+            }
+        })
+    ProxPurchase.getInstance().buy(activity, id) // id can be basePlanId, offerId, or oneTimeProductId
 ```
 
 - Kiểm tra purchase
 
 ```
-ProxPurchase.getInstance().checkPurchase() // true nếu user có ít nhất 1 one time product hoặc available subscription
+ProxPurchase.getInstance().checkPurchase() // true if have a vaild subscription or one time product
 ProxPurchase.getInstance().isPurchase(productId)
 ```
 
