@@ -28,15 +28,15 @@ class StoreFragment: Fragment() {
 
     private fun addListener() {
         binding.monthSubscription.setOnClickListener {
-            ProxPurchase.getInstance().subscribe(requireActivity(), "offer-monthly-2")
+            ProxPurchase.getInstance().buy(requireActivity(), "offer-monthly-2")
         }
 
         binding.yearSubscription.setOnClickListener {
-            ProxPurchase.getInstance().subscribe(requireActivity(), "offer-yearly")
+            ProxPurchase.getInstance().buy(requireActivity(), "offer-yearly")
         }
 
         binding.oneTimeProduct.setOnClickListener {
-            ProxPurchase.getInstance().purchase(requireActivity(), "one_time_payment")
+            ProxPurchase.getInstance().buy(requireActivity(), "one_time_payment")
         }
     }
 

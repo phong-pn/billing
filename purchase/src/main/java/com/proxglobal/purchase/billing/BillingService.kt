@@ -401,6 +401,14 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
         }
     }
 
+    fun buy(activity: Activity, id: String) {
+        productDetailMap[id]?.let { launchBillingFlow(activity, it) }
+            ?: subscriptionMap[id]?.let {
+                launchBillingFlow(activity, productDetailMap[it.productId]!!, it.token)
+            }
+            ?: "Can not find any basePlan or offer or oneTimeProduct that has id = $id. Please check your id again".logeSelf()
+    }
+
     fun subscribe(activity: Activity, basePlanOrOfferId: String) {
         val subs = subscriptionMap[basePlanOrOfferId]
         subs?.let {
@@ -434,6 +442,7 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
 
     /**
      * Return a [BasePlanSubscription] have basePlanId is [basePlanId]
+     *
      * Base plan and Offer is come from Google Play Billing Library. For more information, read
      * this [article](https://support.google.com/googleplay/android-developer/answer/12154973?hl=vi&ref_topic=3452890)
      * @param basePlanId list tags of base plan
@@ -483,9 +492,8 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
     }
 
     fun getPrice(id: String): String {
-        return onetimeProductMap[id]?.price ?:
-        subscriptionMap[id]?.let {
-            when(it) {
+        return onetimeProductMap[id]?.price ?: subscriptionMap[id]?.let {
+            when (it) {
                 is BasePlanSubscription -> it.price
                 is OfferSubscription -> it.discountPrice
                 else -> ""
@@ -495,7 +503,7 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
 
     fun getDiscountPrice(id: String): String {
         return subscriptionMap[id]?.let {
-            when(it) {
+            when (it) {
                 is OfferSubscription -> it.discountPrice
                 else -> ""
             }

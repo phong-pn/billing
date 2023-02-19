@@ -94,24 +94,18 @@ class ProxPurchase private constructor() {
         billingService.end()
     }
 
-
     /**
-     * Subscribe a subscription.
+     * Subscribe a subscription, or purchase a oneTimeProduct.
+     *
      * Result will be update with [PurchaseUpdateListener]
      * @param activity: activity that start billing popup
-     * @param subscription: a [BasePlanSubscription] or [OfferSubscription]
+     * @param id can be a [BasePlanSubscription.basePlanId], or [OfferSubscription.offerId], or [OnetimeProduct.productId]
      *
      */
-    fun subscribe(activity: Activity, basePlanOrOfferId: String) {
-        billingService.subscribe(activity, basePlanOrOfferId)
+    fun buy(activity: Activity, id: String) {
+        billingService.buy(activity, id)
     }
 
-    /**
-     * Purchase a [OnetimeProduct]. Result will be update with [PurchaseUpdateListener]
-     */
-    fun purchase(activity: Activity, onetimeProductId: String) {
-        billingService.purchase(activity, onetimeProductId)
-    }
 
 
     fun getBasePlan(basePlanId: String) =
