@@ -35,7 +35,7 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
 
     private val setSubscriptionId = mutableSetOf<String>()
     private val setOneTimeProductId = mutableSetOf<String>()
-    private val listConsumableId = arrayListOf<String>()
+    private val setConsumableId = mutableSetOf<String>()
 
     private val productDetailMap = hashMapOf<String, ProductDetails>()
     private val subscriptionMap = hashMapOf<String, Subscription>()
@@ -92,6 +92,18 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
      */
     fun addOneTimeProductId(listId: List<String>) {
         setOneTimeProductId.addAll(listId)
+        if (!billingClient.isReady) {
+            startConnection()
+        } else {
+            queryProductDetails()
+            runBlocking {
+                queryPurchases()
+            }
+        }
+    }
+
+    fun addConsumableProductId(listId: List<String>) {
+        setConsumableId.addAll(listId)
         if (!billingClient.isReady) {
             startConnection()
         } else {
@@ -294,7 +306,7 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
                         when (detail?.productType) {
                             BillingClient.ProductType.INAPP -> {
                                 //consume purchase
-                                if (listConsumableId.contains(productId)) consumePurchase(
+                                if (setConsumableId.contains(productId)) consumePurchase(
                                     productId,
                                     purchase.purchaseToken
                                 )

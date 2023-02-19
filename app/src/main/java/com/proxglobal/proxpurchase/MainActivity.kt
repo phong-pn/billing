@@ -4,8 +4,6 @@ import android.content.res.Resources
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.view.GestureDetector
-import android.view.GestureDetector.SimpleOnGestureListener
 import android.view.MotionEvent
 import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
@@ -13,11 +11,9 @@ import com.proxglobal.proxpurchase.game.player.GameRenderView
 import com.proxglobal.proxpurchase.store.StoreFragment
 import com.proxglobal.purchase.billing.ProxPurchase
 import com.proxglobal.purchase.util.logd
-import com.proxglobal.purchase.util.logdSelf
-import kotlin.math.log
 
 val subId = "lib_iap_premium"
-val onetimeProductId = "one_time_payment"
+val onetimeProductId = "android_test_purchase"
 
 class MainActivity : AppCompatActivity() {
     private var positions: List<Float>

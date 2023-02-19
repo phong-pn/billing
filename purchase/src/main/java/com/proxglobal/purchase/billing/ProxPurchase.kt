@@ -3,6 +3,7 @@ package com.proxglobal.purchase.billing
 import android.app.Activity
 import android.content.Context
 import com.proxglobal.purchase.PurchaseUpdateListener
+import com.proxglobal.purchase.data.sharepreference.ProxPreferences
 import com.proxglobal.purchase.model.BasePlanSubscription
 import com.proxglobal.purchase.model.OfferSubscription
 import com.proxglobal.purchase.model.OnetimeProduct
@@ -51,6 +52,7 @@ class ProxPurchase private constructor() {
     fun init(
         context: Context
     ) {
+        ProxPreferences.init(context)
         billingService.initBillingClient(context)
     }
 
@@ -74,6 +76,10 @@ class ProxPurchase private constructor() {
      */
     fun addSubscriptionId(listId: List<String>) {
         billingService.addSubscriptionId(listId)
+    }
+
+    fun addConsumableId(listId: List<String>) {
+        billingService.addConsumableProductId(listId)
     }
 
     /**

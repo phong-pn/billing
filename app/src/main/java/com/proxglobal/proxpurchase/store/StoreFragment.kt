@@ -5,7 +5,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import com.github.florent37.viewanimator.ViewAnimator
 import com.proxglobal.proxpurchase.databinding.FragmentStoreBinding
+import com.proxglobal.purchase.PurchaseUpdateListener
 import com.proxglobal.purchase.billing.ProxPurchase
 
 class StoreFragment: Fragment() {
@@ -26,16 +28,34 @@ class StoreFragment: Fragment() {
         addListener()
     }
 
+    private lateinit var selectedPurchaseItem: View
+
     private fun addListener() {
+        ProxPurchase.getInstance().addPurchaseUpdateListener(object : PurchaseUpdateListener{
+            override fun onPurchaseFailure(code: Int, errorMsg: String?) {
+                super.onPurchaseFailure(code, errorMsg)
+            }
+
+            override fun onUserCancelBilling() {
+                super.onUserCancelBilling()
+            }
+
+            override fun onPurchaseSuccess(productId: String) {
+                super.onPurchaseSuccess(productId)
+            }
+        })
         binding.monthSubscription.setOnClickListener {
+            selectedPurchaseItem = it
             ProxPurchase.getInstance().buy(requireActivity(), "offer-monthly-2")
         }
 
         binding.yearSubscription.setOnClickListener {
+            selectedPurchaseItem = it
             ProxPurchase.getInstance().buy(requireActivity(), "offer-yearly")
         }
 
         binding.oneTimeProduct.setOnClickListener {
+            selectedPurchaseItem = it
             ProxPurchase.getInstance().buy(requireActivity(), "one_time_payment")
         }
     }

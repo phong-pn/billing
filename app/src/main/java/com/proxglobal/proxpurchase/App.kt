@@ -8,11 +8,11 @@ class App: Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        ProxPreferences.init(this)
         ProxPurchase.getInstance().init(this)
         ProxPurchase.getInstance().apply {
             addSubscriptionId(listOf(subId))
             addOneTimeProductId(listOf(onetimeProductId))
+            addConsumableId(listOf())
         }
     }
 
