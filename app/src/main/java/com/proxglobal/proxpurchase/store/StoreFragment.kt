@@ -4,8 +4,9 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.fragment.app.Fragment
-import com.github.florent37.viewanimator.ViewAnimator
+import com.proxglobal.proxpurchase.copyToClipboard
 import com.proxglobal.proxpurchase.databinding.FragmentStoreBinding
 import com.proxglobal.purchase.PurchaseUpdateListener
 import com.proxglobal.purchase.billing.ProxPurchase
@@ -40,29 +41,31 @@ class StoreFragment: Fragment() {
                 super.onUserCancelBilling()
             }
 
-            override fun onPurchaseSuccess(productId: String) {
-                super.onPurchaseSuccess(productId)
+            override fun onPurchaseSuccess(purchase: String) {
+                requireContext().copyToClipboard(purchase)
+                Toast.makeText(requireContext(), "Token copied", Toast.LENGTH_SHORT).show()
+                super.onPurchaseSuccess(purchase)
             }
         })
         binding.monthSubscription.setOnClickListener {
             selectedPurchaseItem = it
-            ProxPurchase.getInstance().buy(requireActivity(), "offer-monthly-2")
+            ProxPurchase.getInstance().buy(requireActivity(), "month")
         }
 
         binding.yearSubscription.setOnClickListener {
             selectedPurchaseItem = it
-            ProxPurchase.getInstance().buy(requireActivity(), "offer-yearly")
+            ProxPurchase.getInstance().buy(requireActivity(), "year")
         }
 
         binding.oneTimeProduct.setOnClickListener {
             selectedPurchaseItem = it
-            ProxPurchase.getInstance().buy(requireActivity(), "one_time_payment")
+            ProxPurchase.getInstance().buy(requireActivity(), "in_app_product_1")
         }
     }
 
     private fun initView() {
-        binding.tvMonthBasePrice.text = ProxPurchase.getInstance().getPrice("offer-monthly-2") + " / tháng"
-        binding.tvYearBasePrice.text = ProxPurchase.getInstance().getPrice("offer-yearly")+ " / năm"
-        binding.tvOneTimePrice.text = ProxPurchase.getInstance().getPrice("one_time_payment")
+        binding.tvMonthBasePrice.text = ProxPurchase.getInstance().getPrice("month") + " / tháng"
+        binding.tvYearBasePrice.text = ProxPurchase.getInstance().getPrice("year")+ " / năm"
+        binding.tvOneTimePrice.text = ProxPurchase.getInstance().getPrice("in_app_product_1")
     }
 }

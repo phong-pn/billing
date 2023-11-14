@@ -312,6 +312,7 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
                                 )
                                 else onOwned(productId)
                             }
+
                             BillingClient.ProductType.SUBS -> {
                                 onOwned(productId)
                             }
@@ -375,20 +376,23 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
                         processPurchase(null)
                     } else {
                         processPurchase(purchases)
-                        purchases.forEach {
-                            it.products.forEach {
-                                onProductPurchased(it)
+                        purchases.forEach { purchase ->
+                            purchase.products.forEach {
+                                onProductPurchased(purchase.purchaseToken)
                             }
                         }
                     }
                 }
+
                 BillingClient.BillingResponseCode.USER_CANCELED -> {
                     onUserCancelBilling()
                 }
+
                 BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED -> {
                     onPurchaseFailure(responseCode, "The user already owns this item")
                     queryPurchases()
                 }
+
                 BillingClient.BillingResponseCode.DEVELOPER_ERROR -> {
                     logDebug("developer error")
                     onPurchaseFailure(
@@ -406,6 +410,7 @@ internal class BillingService private constructor() : PurchasesUpdatedListener,
 //                                "are using must be signed with release keys."
 //                    )
                 }
+
                 else -> {
                     onPurchaseFailure(responseCode, "An error occur")
                 }
